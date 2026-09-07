@@ -1,0 +1,160 @@
+// Trail AC2000 — schema de base de données
+// PostgreSQL est utilisé comme source de vérité pour tous les timestamps
+// et pour les contraintes d'unicité qui empêchent les doubles scans.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // connexion "pooled" via PgBouncer (usage applicatif)
+  directUrl = env("DIRECT_URL")   // connexion directe (utilisée par les migrations Prisma)
+}
+
+enum RaceStatus {
+  draft
+  active
+  closed
+  archived
+}
+
+enum RunStatus {
+  registered
+  running
+  finished
+  abandoned
+  disqualified
+}
+
+enum Checkpoint {
+  start
+  finish
+}
+
+enum ScanResult {
+  success
+  rejected
+  duplicate
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  races Race[]
+
+  @@map("admins")
+}
+
+model Race {
+  id          String     @id @default(uuid())
+  name        String
+  description String?
+  date        DateTime
+  startTime   DateTime?
+  location    String?
+  distanceKm  Float?
+  timezone    String     @default("Europe/Paris")
+  status      RaceStatus @default(draft)
+
+  // Tokens opaques utilisés dans les URLs des QR codes.
+  // Régénérables indépendamment de l'id de la course pour invalider
+  // d'anciens QR imprimés sans supprimer la course.
+  qrStartToken  String @unique @default(uuid())
+  qrFinishToken String @unique @default(uuid())
+
+  publicResultsEnabled Boolean @default(true)
+
+  adminId String
+  admin   Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  participants Participant[]
+  scanLogs     ScanLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("races")
+}
+
+model Participant {
+  id String @id @default(uuid())
+
+  raceId String
+  race   Race   @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  // Numéro normalisé au format E.164 (ex. +33612345678).
+  // Jamais exposé dans les endpoints publics.
+  phoneNormalized String
+
+  firstName String?
+  lastName  String?
+  bibNumber String?
+  category  String?
+  team      String?
+  email     String?
+
+  consentGivenAt DateTime?
+  createdAt      DateTime  @default(now())
+
+  runs     Run[]
+  scanLogs ScanLog[]
+
+  // Un même numéro ne peut être inscrit qu'une fois par course.
+  @@unique([raceId, phoneNormalized])
+  @@index([raceId, bibNumber])
+  @@map("participants")
+}
+
+model Run {
+  id String @id @default(uuid())
+
+  participantId String      @map("participant_id")
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  // Permet à un même participant de courir plusieurs fois la même course.
+  attemptNumber Int @default(1) @map("attempt_number")
+
+  // Timestamps générés côté serveur (now() PostgreSQL), jamais côté client.
+  // IMPORTANT : ces colonnes sont référencées en SQL brut (snake_case) dans
+  // src/lib/scan.ts et prisma/manual_constraints.sql — les noms @map ci-dessous
+  // doivent rester synchronisés avec ces fichiers si vous modifiez ce modèle.
+  startTimestamp  DateTime? @map("start_timestamp")
+  finishTimestamp DateTime? @map("finish_timestamp")
+
+  status     RunStatus @default(registered)
+  durationMs BigInt?   @map("duration_ms")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Rempart anti double-départ : un seul run "running" par participant
+  // à la fois. Appliqué via une contrainte d'index partiel ajoutée par
+  // une migration SQL manuelle (voir prisma/migrations/.../migration.sql),
+  // car Prisma ne modélise pas nativement les index partiels.
+  @@index([participantId, status])
+  @@map("runs")
+}
+
+model ScanLog {
+  id String @id @default(uuid())
+
+  raceId String
+  race   Race   @relation(fields: [raceId], references: [id], onDelete: Cascade)
+
+  participantId String?
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+
+  checkpoint Checkpoint
+  result     ScanResult
+  ipHash     String?
+  userAgent  String?
+
+  serverTimestamp DateTime @default(now())
+
+  @@index([raceId, serverTimestamp])
+  @@map("scan_logs")
+}
