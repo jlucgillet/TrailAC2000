@@ -106,6 +106,17 @@ export function Chrono({ raceId }: { raceId: string }) {
     );
   }
 
+  if (state.status === "error") {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        <p className="mb-3 rounded-full bg-danger/15 px-4 py-1 text-sm font-medium text-danger">
+          ERREUR
+        </p>
+        <p className="max-w-sm text-muted">{state.message}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
       <p className="mb-3 rounded-full bg-accent/15 px-4 py-1 text-sm font-medium text-accent">
