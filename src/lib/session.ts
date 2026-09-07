@@ -13,6 +13,7 @@ const secretKey = () => {
 
 const PARTICIPANT_COOKIE = "trail_participant_session";
 const ADMIN_COOKIE = "trail_admin_session";
+const ATHLETE_COOKIE = "trail_athlete_session";
 
 // --- Session concurrent -----------------------------------------------
 // Pas de mot de passe : après saisie + validation du numéro de téléphone,
@@ -95,4 +96,47 @@ export function clearAdminSession() {
 
 export function clearParticipantSession() {
   cookies().delete(PARTICIPANT_COOKIE);
+}
+
+// --- Session "espace concurrent" (persistante, multi-courses) ---------
+// Contrairement à la session participant ci-dessus (liée à UNE course, posée
+// après un scan), cette session sert à un espace où le concurrent consulte
+// l'historique de toutes ses courses et peut en rejoindre de nouvelles.
+// Identification par téléphone seul, sans code de vérification (même niveau
+// de sécurité que le reste de l'application : voir la note du cahier des
+// charges sur ce compromis).
+
+export type AthleteSessionPayload = {
+  phoneNormalized: string;
+};
+
+export async function createAthleteSession(payload: AthleteSessionPayload) {
+  const token = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30d")
+    .sign(secretKey());
+
+  cookies().set(ATHLETE_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  });
+}
+
+export async function getAthleteSession(): Promise<AthleteSessionPayload | null> {
+  const token = cookies().get(ATHLETE_COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, secretKey());
+    return payload as unknown as AthleteSessionPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function clearAthleteSession() {
+  cookies().delete(ATHLETE_COOKIE);
 }
