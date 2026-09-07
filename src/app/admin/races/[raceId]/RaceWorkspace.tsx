@@ -71,12 +71,12 @@ export function RaceWorkspace({ race: initialRace }: { race: Race }) {
       {tab === "qrcodes" && <QrCodesTab raceId={race.id} />}
       {tab === "participants" && <ParticipantsTab raceId={race.id} />}
       {tab === "results" && <ResultsTab raceId={race.id} />}
-		{tab === "settings" && (
-		  <SettingsTab
-			race={race}
-			onUpdate={(patch) => setRace((prev) => ({ ...prev, ...patch }))}
-		  />
-		)}
+      {tab === "settings" && (
+        <SettingsTab
+          race={race}
+          onUpdate={(patch) => setRace((prev) => ({ ...prev, ...patch }))}
+        />
+      )}
     </div>
   );
 }
