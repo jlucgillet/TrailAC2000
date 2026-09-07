@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+"use client";
+
+import { useState } from "react";
 
 type Race = {
   id: string;
@@ -20,10 +23,24 @@ export function SettingsTab({
   onUpdate,
 }: {
   race: Race;
-  onUpdate: (race: Race) => void;
+  onUpdate: (patch: Partial<Race>) => void;
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function updateField(patch: Partial<Race>) {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/races/${race.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Erreur lors de la sauvegarde.");
+      return;
 
   async function updateField(patch: Partial<Race>) {
     setSaving(true);
