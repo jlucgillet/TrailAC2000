@@ -93,10 +93,18 @@ export function QrScanner({
   useEffect(() => {
     const scanner = scannerRef.current;
     if (!scanner || phase !== "running") return;
-    if (paused) {
-      scanner.pause(true);
-    } else {
-      scanner.resume();
+    try {
+      if (paused) {
+        scanner.pause(true);
+      } else {
+        scanner.resume();
+      }
+    } catch {
+      // La bibliothèque peut refuser une mise en pause/reprise si elle n'est
+      // pas exactement dans l'état attendu à cet instant précis (ex. juste
+      // après un scan). Ce n'est qu'un raffinement d'UX, jamais critique :
+      // on l'ignore plutôt que de laisser une exception faire planter toute
+      // la page (Next.js affiche sinon un écran d'erreur générique).
     }
   }, [paused, phase]);
 

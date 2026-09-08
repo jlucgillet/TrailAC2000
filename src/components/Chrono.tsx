@@ -96,6 +96,7 @@ export function Chrono({ raceId }: { raceId: string }) {
         <p className="text-muted">Votre chronomètre démarrera automatiquement au scan.</p>
         {offline && <ConnectionWarning />}
         <BackToAthleteSpace />
+        <SwitchCompetitor raceId={raceId} />
       </div>
     );
   }
@@ -151,6 +152,20 @@ function BackToAthleteSpace() {
     <Link href="/mon-espace" className="mt-8 text-sm text-muted underline">
       Retour à mon espace
     </Link>
+  );
+}
+
+function SwitchCompetitor({ raceId }: { raceId: string }) {
+  return (
+    <button
+      onClick={async () => {
+        await fetch("/api/participant/switch", { method: "POST" });
+        window.location.href = `/course/${raceId}`;
+      }}
+      className="mt-2 text-sm text-muted underline"
+    >
+      Ce n&rsquo;est pas vous ? Changer de concurrent
+    </button>
   );
 }
 

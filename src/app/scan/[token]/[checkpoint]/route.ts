@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getParticipantSession } from "@/lib/session";
+import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 
 /**
@@ -44,16 +45,34 @@ export async function GET(
 
   // Pas encore identifié (ou identifié pour une autre course) : on renvoie
   // vers la page de saisie du téléphone, qui complétera automatiquement
-  // ce scan juste après identification.
+  // ce scan juste après identification. Une fois identifié, la session
+  // reste utilisée pour tous les scans suivants tant que la personne ne se
+  // déconnecte pas explicitement (lien "Changer de concurrent").
   if (!session || session.raceId !== race.id) {
     const redirectTo = `/course/${race.id}?pendingCheckpoint=${checkpoint}&pendingToken=${token}`;
     return NextResponse.redirect(`${origin}${redirectTo}`);
   }
 
-  // Une session valide existe déjà pour cette course. Plutôt que de
-  // l'utiliser silencieusement, on demande confirmation : sur un téléphone
-  // partagé entre plusieurs concurrents, la session active pourrait être
-  // celle d'une autre personne que celle qui scanne actuellement.
-  const confirmUrl = `/course/${race.id}/confirm?checkpoint=${checkpoint}&token=${token}`;
-  return NextResponse.redirect(`${origin}${confirmUrl}`);
+  const outcome = await performScan(session.participantId, race.id, checkpoint);
+
+  await prisma.scanLog.create({
+    data: {
+      raceId: race.id,
+      participantId: session.participantId,
+      checkpoint,
+      result:
+        outcome.kind === "started" || outcome.kind === "finished"
+          ? "success"
+          : outcome.kind === "already_started" || outcome.kind === "already_finished"
+          ? "duplicate"
+          : "rejected",
+      ipHash: hashIp(ip),
+      userAgent: request.headers.get("user-agent") ?? undefined,
+    },
+  });
+
+  const outcomeParam = encodeURIComponent(JSON.stringify(outcome));
+  return NextResponse.redirect(
+    `${origin}/course/${race.id}/run?outcome=${outcomeParam}`
+  );
 }
