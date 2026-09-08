@@ -52,6 +52,24 @@ export function EditRunModal({
     onClose();
   }
 
+  async function handleDelete() {
+    if (!confirm(`Supprimer le résultat de ${displayName} ? Il redeviendra "Inscrit".`)) return;
+    setSaving(true);
+    setError(null);
+    const res = await fetch(
+      `/api/admin/races/${raceId}/participants/${participantId}/run`,
+      { method: "DELETE" }
+    );
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(data.error ?? "Erreur.");
+      return;
+    }
+    onSaved();
+    onClose();
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -117,7 +135,7 @@ export function EditRunModal({
 
           {error && <p className="text-sm text-danger">{error}</p>}
 
-          <div className="mt-2 flex gap-2">
+          <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="submit"
               disabled={saving}
@@ -132,6 +150,16 @@ export function EditRunModal({
             >
               Annuler
             </button>
+            {(startTimestamp || finishTimestamp) && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className="ml-auto rounded-lg border border-danger px-4 py-2 text-sm text-danger disabled:opacity-50"
+              >
+                Supprimer le résultat
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -57,6 +57,35 @@ export async function POST(
   return NextResponse.json({ ok: true, durationMs: Number(rows[0].duration_ms) });
 }
 
+/**
+ * Supprime le run le plus récent d'un concurrent (remet à "aucun résultat").
+ * La fiche du concurrent (inscription) n'est pas supprimée : il redevient
+ * simplement "Inscrit", prêt à rescanner DÉPART si besoin.
+ */
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { raceId: string; participantId: string } }
+) {
+  const { session, response } = await requireAdmin();
+  if (!session) return response;
+
+  const owned = await ownedParticipant(params.raceId, params.participantId, session.adminId);
+  if (!owned) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+
+  const run = await prisma.run.findFirst({
+    where: { participantId: params.participantId },
+    orderBy: { attemptNumber: "desc" },
+  });
+
+  if (!run) {
+    return NextResponse.json({ error: "Aucun résultat à supprimer." }, { status: 404 });
+  }
+
+  await prisma.run.delete({ where: { id: run.id } });
+
+  return NextResponse.json({ ok: true });
+}
+
 const patchSchema = z.object({
   startTimestamp: z.string().nullable(),
   finishTimestamp: z.string().nullable(),

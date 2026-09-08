@@ -30,10 +30,13 @@ export type ParticipantSessionPayload = {
 export async function createParticipantSession(
   payload: ParticipantSessionPayload
 ) {
+  // Durée volontairement très longue : la session doit rester active tant
+  // que la personne ne se déconnecte pas explicitement (lien "Changer de
+  // concurrent"), pas seulement le temps d'une journée de course.
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("18h") // large marge pour une journée de course
+    .setExpirationTime("180d")
     .sign(secretKey());
 
   cookies().set(PARTICIPANT_COOKIE, token, {
@@ -41,7 +44,7 @@ export async function createParticipantSession(
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 18,
+    maxAge: 60 * 60 * 24 * 180,
   });
 }
 
@@ -116,7 +119,7 @@ export async function createAthleteSession(payload: AthleteSessionPayload) {
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("30d")
+    .setExpirationTime("180d")
     .sign(secretKey());
 
   cookies().set(ATHLETE_COOKIE, token, {
@@ -124,7 +127,7 @@ export async function createAthleteSession(payload: AthleteSessionPayload) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 180,
   });
 }
 
