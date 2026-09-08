@@ -52,11 +52,18 @@ export function AthleteDashboard() {
           <div className="flex flex-col gap-3">
             {myRaces.map((r: any) => (
               <div
-                key={r.raceId}
+                key={`${r.raceId}-${r.attemptNumber ?? "single"}`}
                 className="flex items-center justify-between rounded-xl border border-border bg-surface p-4"
               >
                 <div>
-                  <p className="font-medium">{r.raceName}</p>
+                  <p className="font-medium">
+                    {r.raceName}
+                    {r.attemptNumber !== null && (
+                      <span className="ml-2 text-sm font-normal text-muted">
+                        — Essai {r.attemptNumber}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-sm text-muted">
                     {formatRaceDateTime(r.raceDate, r.raceStartTime)} ·{" "}
                     {STATUS_LABEL[r.runStatus] ?? r.runStatus}

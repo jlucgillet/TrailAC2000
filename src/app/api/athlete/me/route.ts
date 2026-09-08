@@ -31,28 +31,53 @@ export async function GET() {
     },
     include: {
       race: true,
-      runs: { orderBy: { attemptNumber: "desc" }, take: 1 },
+      // Tous les essais (pas seulement le dernier) : un concurrent peut
+      // courir plusieurs fois la même course (§23 du cahier des charges),
+      // et doit pouvoir consulter chacun de ses résultats.
+      runs: { orderBy: { attemptNumber: "asc" } },
     },
   });
 
-  // Tri par date ET heure effectives de la course (heure de départ si
-  // renseignée, sinon simplement la date), du plus récent au plus ancien —
-  // un tri sur la seule date ne distingue pas deux courses le même jour.
-  myParticipations.sort((a, b) => {
-    const timeA = (a.race.startTime ?? a.race.date).getTime();
-    const timeB = (b.race.startTime ?? b.race.date).getTime();
-    return timeB - timeA;
-  });
+  type RaceHistoryEntry = {
+    raceId: string;
+    raceName: string;
+    raceDate: Date;
+    raceStartTime: Date | null;
+    raceStatus: string;
+    runStatus: string;
+    durationMs: number | null;
+    position: number | null;
+    category: string | null;
+    bibNumber: string | null;
+    attemptNumber: number | null;
+  };
 
-  // Pour chaque course terminée, calcule le classement du concurrent parmi
-  // tous les concurrents ayant terminé cette course (même logique que les
-  // pages de résultats admin/publique : tri par temps croissant).
-  const myRaces = await Promise.all(
-    myParticipations.map(async (p) => {
-      const run = p.runs[0];
+  // Une ligne par essai. Un participant sans aucun essai (inscrit mais
+  // jamais parti) obtient une unique ligne "registered".
+  const entries: RaceHistoryEntry[] = [];
+
+  for (const p of myParticipations) {
+    if (p.runs.length === 0) {
+      entries.push({
+        raceId: p.race.id,
+        raceName: p.race.name,
+        raceDate: p.race.date,
+        raceStartTime: p.race.startTime,
+        raceStatus: p.race.status,
+        runStatus: "registered",
+        durationMs: null,
+        position: null,
+        category: p.category,
+        bibNumber: p.bibNumber,
+        attemptNumber: null,
+      });
+      continue;
+    }
+
+    for (const run of p.runs) {
       let position: number | null = null;
 
-      if (run?.status === "finished" && run.durationMs !== null) {
+      if (run.status === "finished" && run.durationMs !== null) {
         const betterCount = await prisma.run.count({
           where: {
             status: "finished",
@@ -63,20 +88,31 @@ export async function GET() {
         position = betterCount + 1;
       }
 
-      return {
+      entries.push({
         raceId: p.race.id,
         raceName: p.race.name,
         raceDate: p.race.date,
         raceStartTime: p.race.startTime,
         raceStatus: p.race.status,
-        runStatus: run?.status ?? "registered",
-        durationMs: run?.durationMs ? Number(run.durationMs) : null,
+        runStatus: run.status,
+        durationMs: run.durationMs !== null ? Number(run.durationMs) : null,
         position,
         category: p.category,
         bibNumber: p.bibNumber,
-      };
-    })
-  );
+        attemptNumber: p.runs.length > 1 ? run.attemptNumber : null,
+      });
+    }
+  }
+
+  // Tri par date ET heure effectives de la course (heure de départ si
+  // renseignée, sinon simplement la date), du plus récent au plus ancien.
+  // À course égale, les essais s'affichent dans l'ordre chronologique.
+  entries.sort((a, b) => {
+    const timeA = (a.raceStartTime ?? a.raceDate).getTime();
+    const timeB = (b.raceStartTime ?? b.raceDate).getTime();
+    if (timeA !== timeB) return timeB - timeA;
+    return (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0);
+  });
 
   const joinedRaceIds = myParticipations.map((p) => p.raceId);
 
@@ -93,7 +129,7 @@ export async function GET() {
     phoneNormalized: session.phoneNormalized,
     firstName,
     lastName,
-    myRaces,
+    myRaces: entries,
     joinableRaces: joinableRaces.map((r) => ({
       id: r.id,
       name: r.name,
