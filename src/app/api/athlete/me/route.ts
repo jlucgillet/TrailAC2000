@@ -25,7 +25,10 @@ export async function GET() {
   const lastName = knownName?.lastName ?? session.lastName ?? null;
 
   const myParticipations = await prisma.participant.findMany({
-    where: { phoneNormalized: session.phoneNormalized },
+    where: {
+      phoneNormalized: session.phoneNormalized,
+      race: { status: { not: "draft" } },
+    },
     include: {
       race: true,
       runs: { orderBy: { attemptNumber: "desc" }, take: 1 },
