@@ -51,6 +51,8 @@ export function AthleteDashboard() {
                     {new Date(r.raceDate).toLocaleDateString("fr-FR")} ·{" "}
                     {STATUS_LABEL[r.runStatus] ?? r.runStatus}
                     {r.durationMs !== null ? ` · ${formatDurationMs(r.durationMs)}` : ""}
+                    {r.position !== null ? ` · ${r.position}${r.position === 1 ? "er" : "e"}` : ""}
+                    {r.category ? ` · ${r.category}` : ""}
                   </p>
                 </div>
                 {r.raceStatus === "active" && r.runStatus !== "finished" ? (

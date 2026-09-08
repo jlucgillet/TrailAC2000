@@ -33,17 +33,38 @@ export async function GET() {
     orderBy: { race: { date: "desc" } },
   });
 
-  const myRaces = myParticipations.map((p) => {
-    const run = p.runs[0];
-    return {
-      raceId: p.race.id,
-      raceName: p.race.name,
-      raceDate: p.race.date,
-      raceStatus: p.race.status,
-      runStatus: run?.status ?? "registered",
-      durationMs: run?.durationMs ? Number(run.durationMs) : null,
-    };
-  });
+  // Pour chaque course terminée, calcule le classement du concurrent parmi
+  // tous les concurrents ayant terminé cette course (même logique que les
+  // pages de résultats admin/publique : tri par temps croissant).
+  const myRaces = await Promise.all(
+    myParticipations.map(async (p) => {
+      const run = p.runs[0];
+      let position: number | null = null;
+
+      if (run?.status === "finished" && run.durationMs !== null) {
+        const betterCount = await prisma.run.count({
+          where: {
+            status: "finished",
+            durationMs: { lt: run.durationMs },
+            participant: { raceId: p.raceId },
+          },
+        });
+        position = betterCount + 1;
+      }
+
+      return {
+        raceId: p.race.id,
+        raceName: p.race.name,
+        raceDate: p.race.date,
+        raceStatus: p.race.status,
+        runStatus: run?.status ?? "registered",
+        durationMs: run?.durationMs ? Number(run.durationMs) : null,
+        position,
+        category: p.category,
+        bibNumber: p.bibNumber,
+      };
+    })
+  );
 
   const joinedRaceIds = myParticipations.map((p) => p.raceId);
 
