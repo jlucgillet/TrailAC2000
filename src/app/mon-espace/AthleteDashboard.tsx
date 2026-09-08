@@ -25,6 +25,26 @@ function formatRaceDateTime(dateIso: string, startTimeIso: string | null): strin
   return `${date} à ${time}`;
 }
 
+function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const date = d.toLocaleDateString("fr-FR");
+  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+  return `${date} à ${time}`;
+}
+
+/** Date/heure réelles du résultat (arrivée, sinon départ), pas la date
+ * programmée de la course — une course peut être courue à tout moment. */
+function formatResultDateTime(r: {
+  finishTimestamp: string | null;
+  startTimestamp: string | null;
+  raceDate: string;
+  raceStartTime: string | null;
+}): string {
+  if (r.finishTimestamp) return formatDateTime(r.finishTimestamp);
+  if (r.startTimestamp) return formatDateTime(r.startTimestamp);
+  return formatRaceDateTime(r.raceDate, r.raceStartTime);
+}
+
 export function AthleteDashboard() {
   const { data, isLoading, mutate } = useSWR("/api/athlete/me", fetcher, {
     refreshInterval: 10000,
@@ -65,7 +85,7 @@ export function AthleteDashboard() {
                     )}
                   </p>
                   <p className="text-sm text-muted">
-                    {formatRaceDateTime(r.raceDate, r.raceStartTime)} ·{" "}
+                    {formatResultDateTime(r)} ·{" "}
                     {STATUS_LABEL[r.runStatus] ?? r.runStatus}
                     {r.durationMs !== null ? ` · ${formatDurationMs(r.durationMs)}` : ""}
                     {r.position !== null ? ` · ${r.position}${r.position === 1 ? "er" : "e"}` : ""}

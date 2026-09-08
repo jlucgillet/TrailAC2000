@@ -50,6 +50,8 @@ export async function GET() {
     category: string | null;
     bibNumber: string | null;
     attemptNumber: number | null;
+    startTimestamp: Date | null;
+    finishTimestamp: Date | null;
   };
 
   // Une ligne par essai. Un participant sans aucun essai (inscrit mais
@@ -70,6 +72,8 @@ export async function GET() {
         category: p.category,
         bibNumber: p.bibNumber,
         attemptNumber: null,
+        startTimestamp: null,
+        finishTimestamp: null,
       });
       continue;
     }
@@ -100,16 +104,19 @@ export async function GET() {
         category: p.category,
         bibNumber: p.bibNumber,
         attemptNumber: p.runs.length > 1 ? run.attemptNumber : null,
+        startTimestamp: run.startTimestamp,
+        finishTimestamp: run.finishTimestamp,
       });
     }
   }
 
-  // Tri par date ET heure effectives de la course (heure de départ si
-  // renseignée, sinon simplement la date), du plus récent au plus ancien.
-  // À course égale, les essais s'affichent dans l'ordre chronologique.
+  // Tri par date ET heure RÉELLES du résultat (arrivée, ou départ si pas
+  // encore arrivé, sinon la date programmée de la course pour une simple
+  // inscription) — pas la date programmée de la course, qui ne reflète pas
+  // le moment où le concurrent a réellement couru.
   entries.sort((a, b) => {
-    const timeA = (a.raceStartTime ?? a.raceDate).getTime();
-    const timeB = (b.raceStartTime ?? b.raceDate).getTime();
+    const timeA = (a.finishTimestamp ?? a.startTimestamp ?? a.raceStartTime ?? a.raceDate).getTime();
+    const timeB = (b.finishTimestamp ?? b.startTimestamp ?? b.raceStartTime ?? b.raceDate).getTime();
     if (timeA !== timeB) return timeB - timeA;
     return (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0);
   });
