@@ -8,6 +8,22 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
+  // Le prénom/nom affiché vient de la fiche concurrent (table participants),
+  // pas seulement de ce qui a été saisi lors de la connexion à Mon Espace —
+  // ça reflète toujours la donnée la plus à jour, y compris si elle a été
+  // renseignée via le formulaire de scan classique ou un import CSV.
+  const knownName = await prisma.participant.findFirst({
+    where: {
+      phoneNormalized: session.phoneNormalized,
+      OR: [{ firstName: { not: null } }, { lastName: { not: null } }],
+    },
+    orderBy: { createdAt: "desc" },
+    select: { firstName: true, lastName: true },
+  });
+
+  const firstName = knownName?.firstName ?? session.firstName ?? null;
+  const lastName = knownName?.lastName ?? session.lastName ?? null;
+
   const myParticipations = await prisma.participant.findMany({
     where: { phoneNormalized: session.phoneNormalized },
     include: {
@@ -42,8 +58,8 @@ export async function GET() {
 
   return NextResponse.json({
     phoneNormalized: session.phoneNormalized,
-    firstName: session.firstName ?? null,
-    lastName: session.lastName ?? null,
+    firstName,
+    lastName,
     myRaces,
     joinableRaces: joinableRaces.map((r) => ({
       id: r.id,
