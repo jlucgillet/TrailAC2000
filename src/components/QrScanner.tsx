@@ -26,6 +26,11 @@ export function QrScanner({
 
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
+      // IMPORTANT : l'élément #containerId doit déjà exister dans le DOM à cet
+      // instant. Il est donc rendu de façon permanente ci-dessous (juste
+      // masqué visuellement tant que le scanner n'est pas actif), plutôt que
+      // conditionné à `phase === "running"` — sinon Html5Qrcode ne trouve pas
+      // son point d'ancrage et l'activation échoue silencieusement.
       const scanner = new Html5Qrcode(containerId.current);
       scannerRef.current = scanner;
 
@@ -50,7 +55,7 @@ export function QrScanner({
         );
       } else if (name === "NotFoundError" || name === "OverconstrainedError") {
         setError("Aucune caméra arrière détectée sur cet appareil.");
-      } else if (location.protocol !== "https:") {
+      } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
         setError("Le scan caméra nécessite une connexion sécurisée (https).");
       } else {
         setError(
@@ -84,28 +89,34 @@ export function QrScanner({
     }
   }, [paused, phase]);
 
-  if (phase === "idle" || phase === "starting") {
-    return (
-      <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-8">
-        <button
-          onClick={handleStart}
-          disabled={phase === "starting"}
-          className="rounded-xl bg-accent px-6 py-4 text-lg font-semibold text-bg disabled:opacity-50"
-        >
-          {phase === "starting" ? "Activation…" : "Activer la caméra"}
-        </button>
-        <p className="text-center text-sm text-muted">
-          Votre navigateur va demander l&rsquo;autorisation d&rsquo;utiliser la caméra.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-border bg-surface">
-      <div id={containerId.current} className="w-full" />
-      {error && (
-        <div className="p-4 text-center">
+    <div className="mx-auto w-full max-w-sm">
+      {(phase === "idle" || phase === "starting") && (
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-8">
+          <button
+            onClick={handleStart}
+            disabled={phase === "starting"}
+            className="rounded-xl bg-accent px-6 py-4 text-lg font-semibold text-bg disabled:opacity-50"
+          >
+            {phase === "starting" ? "Activation…" : "Activer la caméra"}
+          </button>
+          <p className="text-center text-sm text-muted">
+            Votre navigateur va demander l&rsquo;autorisation d&rsquo;utiliser la caméra.
+          </p>
+        </div>
+      )}
+
+      <div
+        id={containerId.current}
+        className={
+          phase === "running"
+            ? "w-full overflow-hidden rounded-2xl border border-border bg-surface"
+            : "hidden"
+        }
+      />
+
+      {phase === "error" && error && (
+        <div className="rounded-2xl border border-border bg-surface p-4 text-center">
           <p className="mb-3 text-sm text-danger">{error}</p>
           <button
             onClick={handleStart}

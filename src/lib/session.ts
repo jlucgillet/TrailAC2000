@@ -108,6 +108,8 @@ export function clearParticipantSession() {
 
 export type AthleteSessionPayload = {
   phoneNormalized: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 export async function createAthleteSession(payload: AthleteSessionPayload) {

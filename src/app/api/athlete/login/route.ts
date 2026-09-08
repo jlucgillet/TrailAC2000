@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { createAthleteSession } from "@/lib/session";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 
-const bodySchema = z.object({ phone: z.string().min(4) });
+const bodySchema = z.object({
+  phone: z.string().min(4),
+  firstName: z.string().trim().max(100).optional(),
+  lastName: z.string().trim().max(100).optional(),
+});
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
@@ -25,6 +30,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: normalized.error }, { status: 400 });
   }
 
-  await createAthleteSession({ phoneNormalized: normalized.value });
+  let firstName = parsed.data.firstName;
+  let lastName = parsed.data.lastName;
+
+  // Si le prénom/nom n'est pas saisi ici, on va chercher s'il a déjà été
+  // renseigné lors de l'inscription à une course (formulaire de scan
+  // classique), pour éviter de le redemander inutilement.
+  if (!firstName && !lastName) {
+    const known = await prisma.participant.findFirst({
+      where: {
+        phoneNormalized: normalized.value,
+        OR: [{ firstName: { not: null } }, { lastName: { not: null } }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (known) {
+      firstName = known.firstName ?? undefined;
+      lastName = known.lastName ?? undefined;
+    }
+  }
+
+  await createAthleteSession({ phoneNormalized: normalized.value, firstName, lastName });
   return NextResponse.json({ ok: true });
 }

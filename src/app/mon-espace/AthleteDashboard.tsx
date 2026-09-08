@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { formatDurationMs } from "@/lib/time";
@@ -25,9 +26,12 @@ export function AthleteDashboard() {
 
   const myRaces = data?.myRaces ?? [];
   const joinableRaces = data?.joinableRaces ?? [];
+  const fullName = [data?.firstName, data?.lastName].filter(Boolean).join(" ");
 
   return (
     <div className="flex flex-col gap-10">
+      <NameHeader fullName={fullName} onUpdated={() => mutate()} />
+
       <section>
         <h1 className="mb-6 font-display text-3xl font-semibold">Mes courses</h1>
         {myRaces.length === 0 ? (
@@ -83,6 +87,87 @@ export function AthleteDashboard() {
         )}
       </section>
     </div>
+  );
+}
+
+function NameHeader({
+  fullName,
+  onUpdated,
+}: {
+  fullName: string;
+  onUpdated: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await fetch("/api/athlete/name", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ firstName: firstName || undefined, lastName: lastName || undefined }),
+    });
+    setSaving(false);
+    setEditing(false);
+    onUpdated();
+  }
+
+  if (editing) {
+    return (
+      <form onSubmit={handleSave} className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Prénom</span>
+          <input
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+            autoFocus
+          />
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs text-muted">Nom</span>
+          <input
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={saving}
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
+        >
+          Enregistrer
+        </button>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="text-sm text-muted underline"
+        >
+          Annuler
+        </button>
+      </form>
+    );
+  }
+
+  if (fullName) {
+    return (
+      <div className="flex items-center justify-between">
+        <p className="font-display text-2xl font-semibold">Bonjour, {fullName}</p>
+        <button onClick={() => setEditing(true)} className="text-sm text-muted underline">
+          Modifier
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <button onClick={() => setEditing(true)} className="w-fit text-sm text-muted underline">
+      + Ajouter mon prénom et nom
+    </button>
   );
 }
 

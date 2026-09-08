@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { formatDurationMs } from "@/lib/time";
 
 type RunState =
@@ -94,6 +95,7 @@ export function Chrono({ raceId }: { raceId: string }) {
         </h1>
         <p className="text-muted">Votre chronomètre démarrera automatiquement au scan.</p>
         {offline && <ConnectionWarning />}
+        <BackToAthleteSpace />
       </div>
     );
   }
@@ -112,6 +114,7 @@ export function Chrono({ raceId }: { raceId: string }) {
           À l&rsquo;arrivée, scannez le QR code <strong className="text-ink">ARRIVÉE</strong>.
         </p>
         {offline && <ConnectionWarning />}
+        <BackToAthleteSpace />
       </div>
     );
   }
@@ -138,7 +141,16 @@ export function Chrono({ raceId }: { raceId: string }) {
         {formatDurationMs(state.durationMs)}
       </div>
       <p className="mt-8 text-2xl font-display">Bravo !</p>
+      <BackToAthleteSpace />
     </div>
+  );
+}
+
+function BackToAthleteSpace() {
+  return (
+    <Link href="/mon-espace" className="mt-8 text-sm text-muted underline">
+      Retour à mon espace
+    </Link>
   );
 }
 

@@ -42,6 +42,8 @@ export async function GET() {
 
   return NextResponse.json({
     phoneNormalized: session.phoneNormalized,
+    firstName: session.firstName ?? null,
+    lastName: session.lastName ?? null,
     myRaces,
     joinableRaces: joinableRaces.map((r) => ({
       id: r.id,
