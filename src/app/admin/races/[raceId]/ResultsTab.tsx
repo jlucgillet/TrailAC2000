@@ -19,6 +19,7 @@ export function ResultsTab({ raceId }: { raceId: string }) {
     category: r.category,
     status: r.status,
     durationMs: r.durationMs,
+    phone: r.phone,
     startTimestamp: r.startTimestamp ? new Date(r.startTimestamp).toLocaleTimeString("fr-FR") : null,
     finishTimestamp: r.finishTimestamp ? new Date(r.finishTimestamp).toLocaleTimeString("fr-FR") : null,
   }));
@@ -33,7 +34,7 @@ export function ResultsTab({ raceId }: { raceId: string }) {
           Exporter en CSV
         </a>
       </div>
-      <ResultsTable rows={rows} showTimestamps />
+      <ResultsTable rows={rows} showTimestamps showPhone />
     </div>
   );
 }

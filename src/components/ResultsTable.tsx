@@ -9,6 +9,7 @@ export type ResultRow = {
   durationMs: number | null;
   startTimestamp?: string | null;
   finishTimestamp?: string | null;
+  phone?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -22,10 +23,14 @@ const STATUS_LABEL: Record<string, string> = {
 export function ResultsTable({
   rows,
   showTimestamps = false,
+  showPhone = false,
 }: {
   rows: ResultRow[];
   showTimestamps?: boolean;
+  showPhone?: boolean;
 }) {
+  const columnCount = 6 + (showTimestamps ? 2 : 0) + (showPhone ? 1 : 0);
+
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[560px] text-left text-sm">
@@ -34,6 +39,7 @@ export function ResultsTable({
             <th className="px-4 py-3 font-medium">Pos.</th>
             <th className="px-4 py-3 font-medium">Dossard</th>
             <th className="px-4 py-3 font-medium">Concurrent</th>
+            {showPhone && <th className="px-4 py-3 font-medium">Téléphone</th>}
             <th className="px-4 py-3 font-medium">Catégorie</th>
             {showTimestamps && <th className="px-4 py-3 font-medium">Départ</th>}
             {showTimestamps && <th className="px-4 py-3 font-medium">Arrivée</th>}
@@ -47,6 +53,9 @@ export function ResultsTable({
               <td className="px-4 py-3 tabular-nums">{row.position ?? "—"}</td>
               <td className="px-4 py-3 tabular-nums">{row.bibNumber ?? "—"}</td>
               <td className="px-4 py-3">{row.displayName}</td>
+              {showPhone && (
+                <td className="px-4 py-3 tabular-nums text-muted">{row.phone ?? "—"}</td>
+              )}
               <td className="px-4 py-3 text-muted">{row.category ?? "—"}</td>
               {showTimestamps && (
                 <td className="px-4 py-3 text-muted">{row.startTimestamp ?? "—"}</td>
@@ -64,7 +73,7 @@ export function ResultsTable({
           ))}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={showTimestamps ? 8 : 6} className="px-4 py-8 text-center text-muted">
+              <td colSpan={columnCount} className="px-4 py-8 text-center text-muted">
                 Aucun résultat pour le moment.
               </td>
             </tr>
