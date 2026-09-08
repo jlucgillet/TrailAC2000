@@ -10,18 +10,16 @@ export function QrScanner({
   onDecoded: (decodedText: string) => void;
 }) {
   // useId() (et non Math.random()) : garantit le même identifiant entre le
-  // rendu serveur et l'hydratation client. Avec Math.random(), les deux
-  // valeurs divergent systématiquement, et le script ne retrouve alors
-  // jamais l'élément qu'il vient pourtant de créer.
+  // rendu serveur et l'hydratation client.
   const reactId = useId().replace(/:/g, "");
   const containerId = useRef(`qr-reader-${reactId}`);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const [phase, setPhase] = useState<"starting" | "running" | "error">("starting");
   const [error, setError] = useState<string | null>(null);
+  const [log, setLog] = useState<string[]>([]);
 
-  // onDecoded change à chaque rendu du parent ; on passe par une ref
-  // toujours à jour pour que le callback de la bibliothèque (enregistré une
-  // seule fois au démarrage) appelle toujours la dernière version.
+  const addLog = (msg: string) => setLog((prev) => [...prev, msg]);
+
   const onDecodedRef = useRef(onDecoded);
   onDecodedRef.current = onDecoded;
 
@@ -39,19 +37,28 @@ export function QrScanner({
     }
 
     async function start() {
-      try {
-        const [{ Html5Qrcode }] = await Promise.all([
-          import("html5-qrcode"),
-          waitForElement(containerId.current),
-        ]);
-        if (cancelled) return;
+      addLog(`Élément cible : #${containerId.current}`);
+      addLog(`Protocole : ${typeof window !== "undefined" ? window.location.protocol : "?"}`);
 
-        if (!document.getElementById(containerId.current)) {
+      try {
+        addLog("Chargement de html5-qrcode…");
+        const mod = await import("html5-qrcode");
+        addLog("Bibliothèque chargée.");
+        const { Html5Qrcode } = mod;
+
+        addLog("Recherche de l'élément dans le DOM…");
+        const found = await waitForElement(containerId.current);
+        addLog(found ? "Élément trouvé." : "Élément INTROUVABLE après 4s.");
+
+        if (cancelled) return;
+        if (!found) {
           throw new Error("Zone d'affichage caméra introuvable dans la page.");
         }
 
+        addLog("Instanciation de Html5Qrcode…");
         const scanner = new Html5Qrcode(containerId.current);
         scannerRef.current = scanner;
+        addLog("Instance créée. Appel de start()…");
 
         await scanner.start(
           { facingMode: "environment" },
@@ -60,10 +67,10 @@ export function QrScanner({
             onDecodedRef.current(decodedText);
           },
           () => {
-            // Erreurs de décodage image par image : ignorées volontairement,
-            // c'est le comportement normal tant qu'aucun QR n'est dans le cadre.
+            // Erreurs de décodage image par image : ignorées volontairement.
           }
         );
+        addLog("start() résolu avec succès — caméra active.");
         if (!cancelled) setPhase("running");
       } catch (err: unknown) {
         if (cancelled) return;
@@ -74,23 +81,26 @@ export function QrScanner({
         if (err instanceof Error) {
           name = err.name;
           message = err.message;
+          addLog(`ERREUR — name: ${err.name}`);
+          addLog(`ERREUR — message: ${err.message}`);
+          if (err.stack) addLog(`stack (début) : ${err.stack.slice(0, 300)}`);
         } else if (typeof err === "string") {
           message = err;
+          addLog(`ERREUR (string) : ${err}`);
         } else {
           message = JSON.stringify(err);
+          addLog(`ERREUR (autre) : ${message}`);
         }
 
         let friendly: string;
         if (name === "NotAllowedError") {
-          friendly =
-            "Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur, puis rechargez la page.";
+          friendly = "Accès à la caméra refusé.";
         } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-          friendly = "Aucune caméra arrière détectée sur cet appareil.";
+          friendly = "Aucune caméra arrière détectée.";
         } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
-          friendly = "Le scan caméra nécessite une connexion sécurisée (https).";
+          friendly = "Connexion non sécurisée (https requis).";
         } else {
-          friendly =
-            "Impossible d'activer la caméra. Utilisez plutôt le scan classique via l'appareil photo natif de votre téléphone.";
+          friendly = "Impossible d'activer la caméra.";
         }
 
         setError(message ? `${friendly} (détail : ${message})` : friendly);
@@ -106,9 +116,7 @@ export function QrScanner({
         scanner
           .stop()
           .then(() => scanner.clear())
-          .catch(() => {
-            /* déjà arrêté */
-          });
+          .catch(() => {});
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,8 +132,7 @@ export function QrScanner({
         scanner.resume();
       }
     } catch {
-      // Raffinement d'UX seulement : jamais laisser une exception ici
-      // faire planter toute la page.
+      // best-effort
     }
   }, [paused, phase]);
 
@@ -134,9 +141,6 @@ export function QrScanner({
       {phase === "starting" && (
         <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-8">
           <p className="text-sm text-muted">Activation de la caméra…</p>
-          <p className="text-center text-xs text-muted">
-            Autorisez l&rsquo;accès à la caméra si votre navigateur le demande.
-          </p>
         </div>
       )}
 
@@ -154,6 +158,17 @@ export function QrScanner({
           <p className="mb-3 text-sm text-danger">{error}</p>
         </div>
       )}
+
+      {/* Journal de diagnostic visible directement sur l'écran, en attendant
+          de confirmer la cause exacte du problème d'activation caméra. */}
+      <div className="mt-4 rounded-lg border border-border bg-bg p-3">
+        <p className="mb-1 text-xs font-semibold text-muted">Journal de diagnostic :</p>
+        <div className="max-h-48 overflow-y-auto font-mono text-[10px] leading-relaxed text-muted">
+          {log.map((l, i) => (
+            <div key={i}>{l}</div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
