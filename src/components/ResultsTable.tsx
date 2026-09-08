@@ -10,6 +10,7 @@ export type ResultRow = {
   startTimestamp?: string | null;
   finishTimestamp?: string | null;
   phone?: string | null;
+  participantId?: string;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -24,12 +25,14 @@ export function ResultsTable({
   rows,
   showTimestamps = false,
   showPhone = false,
+  renderActions,
 }: {
   rows: ResultRow[];
   showTimestamps?: boolean;
   showPhone?: boolean;
+  renderActions?: (row: ResultRow) => React.ReactNode;
 }) {
-  const columnCount = 6 + (showTimestamps ? 2 : 0) + (showPhone ? 1 : 0);
+  const columnCount = 6 + (showTimestamps ? 2 : 0) + (showPhone ? 1 : 0) + (renderActions ? 1 : 0);
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
@@ -45,6 +48,7 @@ export function ResultsTable({
             {showTimestamps && <th className="px-4 py-3 font-medium">Arrivée</th>}
             <th className="px-4 py-3 font-medium">Temps</th>
             <th className="px-4 py-3 font-medium">Statut</th>
+            {renderActions && <th className="px-4 py-3 font-medium">Actions</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
@@ -69,6 +73,7 @@ export function ResultsTable({
               <td className="px-4 py-3">
                 <StatusPill status={row.status} />
               </td>
+              {renderActions && <td className="px-4 py-3">{renderActions(row)}</td>}
             </tr>
           ))}
           {rows.length === 0 && (
