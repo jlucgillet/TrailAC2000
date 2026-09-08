@@ -62,6 +62,7 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
           {importing ? "Import en cours…" : "Importer un CSV"}
           <input type="file" accept=".csv" onChange={handleImport} className="hidden" disabled={importing} />
         </label>
+        <CopyFromRaceForm raceId={raceId} onCopied={() => mutate()} />
       </div>
 
       {importMessage && <p className="text-sm text-muted">{importMessage}</p>}
@@ -101,6 +102,102 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function CopyFromRaceForm({ raceId, onCopied }: { raceId: string; onCopied: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [races, setRaces] = useState<{ id: string; name: string; date: string }[] | null>(null);
+  const [sourceRaceId, setSourceRaceId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleOpen() {
+    setOpen(true);
+    setMessage(null);
+    setError(null);
+    if (!races) {
+      const res = await fetch(`/api/admin/races`);
+      const data = await res.json();
+      setRaces(
+        (data.races ?? [])
+          .filter((r: { id: string }) => r.id !== raceId)
+          .map((r: { id: string; name: string; date: string }) => ({
+            id: r.id,
+            name: r.name,
+            date: r.date,
+          }))
+      );
+    }
+  }
+
+  async function handleCopy() {
+    if (!sourceRaceId) return;
+    setLoading(true);
+    setError(null);
+    setMessage(null);
+    const res = await fetch(`/api/admin/races/${raceId}/participants/copy-from`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sourceRaceId }),
+    });
+    const data = await res.json();
+    setLoading(false);
+    if (!res.ok) {
+      setError(data.error ?? "Erreur lors de la copie.");
+      return;
+    }
+    setMessage(`${data.copied} concurrent(s) copié(s) sur ${data.total}.`);
+    onCopied();
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={handleOpen}
+        className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+      >
+        Copier depuis une autre course
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2">
+      {races === null ? (
+        <span className="text-sm text-muted">Chargement des courses…</span>
+      ) : races.length === 0 ? (
+        <span className="text-sm text-muted">Aucune autre course disponible.</span>
+      ) : (
+        <>
+          <select
+            value={sourceRaceId}
+            onChange={(e) => setSourceRaceId(e.target.value)}
+            className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+          >
+            <option value="">Choisir une course…</option>
+            {races.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name} ({new Date(r.date).toLocaleDateString("fr-FR")})
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={handleCopy}
+            disabled={!sourceRaceId || loading}
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
+          >
+            {loading ? "Copie…" : "Copier"}
+          </button>
+        </>
+      )}
+      <button onClick={() => setOpen(false)} className="text-sm text-muted underline">
+        Fermer
+      </button>
+      {message && <p className="w-full text-sm text-accent">{message}</p>}
+      {error && <p className="w-full text-sm text-danger">{error}</p>}
     </div>
   );
 }
