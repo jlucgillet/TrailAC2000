@@ -68,7 +68,7 @@ export function RaceWorkspace({ race: initialRace }: { race: Race }) {
       </nav>
 
       {tab === "dashboard" && <DashboardTab raceId={race.id} />}
-      {tab === "qrcodes" && <QrCodesTab raceId={race.id} />}
+      {tab === "qrcodes" && <QrCodesTab raceId={race.id} raceName={race.name} />}
       {tab === "participants" && <ParticipantsTab raceId={race.id} />}
       {tab === "results" && <ResultsTab raceId={race.id} />}
       {tab === "settings" && (
