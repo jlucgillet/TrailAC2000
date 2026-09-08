@@ -23,10 +23,27 @@ export function QrScanner({
   useEffect(() => {
     let cancelled = false;
 
+    async function waitForElement(id: string, timeoutMs = 4000): Promise<boolean> {
+      const started = Date.now();
+      while (!document.getElementById(id)) {
+        if (cancelled) return false;
+        if (Date.now() - started > timeoutMs) return false;
+        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      }
+      return true;
+    }
+
     async function start() {
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
+        const [{ Html5Qrcode }] = await Promise.all([
+          import("html5-qrcode"),
+          waitForElement(containerId.current),
+        ]);
         if (cancelled) return;
+
+        if (!document.getElementById(containerId.current)) {
+          throw new Error("Zone d'affichage caméra introuvable dans la page.");
+        }
 
         const scanner = new Html5Qrcode(containerId.current);
         scannerRef.current = scanner;
