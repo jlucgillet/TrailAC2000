@@ -48,20 +48,31 @@ export function QrScanner({
       setPhase("running");
     } catch (err: unknown) {
       setPhase("error");
-      const name = err instanceof Error ? err.name : "";
-      if (name === "NotAllowedError") {
-        setError(
-          "Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur, puis réessayez."
-        );
-      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-        setError("Aucune caméra arrière détectée sur cet appareil.");
-      } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
-        setError("Le scan caméra nécessite une connexion sécurisée (https).");
+      let name = "";
+      let message = "";
+      if (err instanceof Error) {
+        name = err.name;
+        message = err.message;
+      } else if (typeof err === "string") {
+        message = err;
       } else {
-        setError(
-          "Impossible d'activer la caméra. Utilisez plutôt le scan classique via l'appareil photo natif de votre téléphone."
-        );
+        message = JSON.stringify(err);
       }
+
+      let friendly: string;
+      if (name === "NotAllowedError") {
+        friendly =
+          "Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur, puis réessayez.";
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        friendly = "Aucune caméra arrière détectée sur cet appareil.";
+      } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
+        friendly = "Le scan caméra nécessite une connexion sécurisée (https).";
+      } else {
+        friendly =
+          "Impossible d'activer la caméra. Utilisez plutôt le scan classique via l'appareil photo natif de votre téléphone.";
+      }
+
+      setError(message ? `${friendly} (détail : ${message})` : friendly);
     }
   }
 
