@@ -31,95 +31,50 @@ export async function GET() {
     },
     include: {
       race: true,
-      // Tous les essais (pas seulement le dernier) : un concurrent peut
-      // courir plusieurs fois la même course (§23 du cahier des charges),
-      // et doit pouvoir consulter chacun de ses résultats.
-      runs: { orderBy: { attemptNumber: "asc" } },
+      // Tous les essais : une course est un segment que l'on peut courir
+      // librement plusieurs fois tant qu'elle est active, pour mesurer sa
+      // progression. On calcule ici le meilleur temps et le nombre d'essais ;
+      // le détail de chaque essai est consultable via /api/athlete/races/[raceId]/results.
+      runs: true,
     },
   });
 
-  type RaceHistoryEntry = {
-    raceId: string;
-    raceName: string;
-    raceDate: Date;
-    raceStartTime: Date | null;
-    raceStatus: string;
-    runStatus: string;
-    durationMs: number | null;
-    position: number | null;
-    category: string | null;
-    bibNumber: string | null;
-    attemptNumber: number | null;
-    startTimestamp: Date | null;
-    finishTimestamp: Date | null;
-  };
+  const myRaces = myParticipations.map((p) => {
+    const finishedRuns = p.runs.filter((r) => r.status === "finished" && r.durationMs !== null);
+    const bestDurationMs =
+      finishedRuns.length > 0
+        ? Math.min(...finishedRuns.map((r) => Number(r.durationMs)))
+        : null;
 
-  // Une ligne par essai. Un participant sans aucun essai (inscrit mais
-  // jamais parti) obtient une unique ligne "registered".
-  const entries: RaceHistoryEntry[] = [];
+    const runningRun = p.runs.find((r) => r.status === "running");
+    const lastRunStatus = runningRun ? "running" : finishedRuns.length > 0 ? "finished" : "registered";
 
-  for (const p of myParticipations) {
-    if (p.runs.length === 0) {
-      entries.push({
-        raceId: p.race.id,
-        raceName: p.race.name,
-        raceDate: p.race.date,
-        raceStartTime: p.race.startTime,
-        raceStatus: p.race.status,
-        runStatus: "registered",
-        durationMs: null,
-        position: null,
-        category: p.category,
-        bibNumber: p.bibNumber,
-        attemptNumber: null,
-        startTimestamp: null,
-        finishTimestamp: null,
-      });
-      continue;
-    }
+    // Date/heure du dernier événement réel (dernière arrivée, ou départ en
+    // cours), pour trier la liste par activité récente plutôt que par date
+    // programmée de la course.
+    const latestActivity = p.runs.reduce<Date | null>((latest, r) => {
+      const t = r.finishTimestamp ?? r.startTimestamp;
+      if (!t) return latest;
+      if (!latest || t > latest) return t;
+      return latest;
+    }, null);
 
-    for (const run of p.runs) {
-      let position: number | null = null;
-
-      if (run.status === "finished" && run.durationMs !== null) {
-        const betterCount = await prisma.run.count({
-          where: {
-            status: "finished",
-            durationMs: { lt: run.durationMs },
-            participant: { raceId: p.raceId },
-          },
-        });
-        position = betterCount + 1;
-      }
-
-      entries.push({
-        raceId: p.race.id,
-        raceName: p.race.name,
-        raceDate: p.race.date,
-        raceStartTime: p.race.startTime,
-        raceStatus: p.race.status,
-        runStatus: run.status,
-        durationMs: run.durationMs !== null ? Number(run.durationMs) : null,
-        position,
-        category: p.category,
-        bibNumber: p.bibNumber,
-        attemptNumber: p.runs.length > 1 ? run.attemptNumber : null,
-        startTimestamp: run.startTimestamp,
-        finishTimestamp: run.finishTimestamp,
-      });
-    }
-  }
-
-  // Tri par date ET heure RÉELLES du résultat (arrivée, ou départ si pas
-  // encore arrivé, sinon la date programmée de la course pour une simple
-  // inscription) — pas la date programmée de la course, qui ne reflète pas
-  // le moment où le concurrent a réellement couru.
-  entries.sort((a, b) => {
-    const timeA = (a.finishTimestamp ?? a.startTimestamp ?? a.raceStartTime ?? a.raceDate).getTime();
-    const timeB = (b.finishTimestamp ?? b.startTimestamp ?? b.raceStartTime ?? b.raceDate).getTime();
-    if (timeA !== timeB) return timeB - timeA;
-    return (a.attemptNumber ?? 0) - (b.attemptNumber ?? 0);
+    return {
+      raceId: p.race.id,
+      raceName: p.race.name,
+      raceDate: p.race.date,
+      raceStartTime: p.race.startTime,
+      raceStatus: p.race.status,
+      category: p.category,
+      bibNumber: p.bibNumber,
+      attemptsCount: p.runs.length,
+      bestDurationMs,
+      lastRunStatus,
+      sortTime: (latestActivity ?? p.race.startTime ?? p.race.date).getTime(),
+    };
   });
+
+  myRaces.sort((a, b) => b.sortTime - a.sortTime);
 
   const joinedRaceIds = myParticipations.map((p) => p.raceId);
 
@@ -136,7 +91,7 @@ export async function GET() {
     phoneNormalized: session.phoneNormalized,
     firstName,
     lastName,
-    myRaces: entries,
+    myRaces: myRaces.map(({ sortTime, ...r }) => r),
     joinableRaces: joinableRaces.map((r) => ({
       id: r.id,
       name: r.name,

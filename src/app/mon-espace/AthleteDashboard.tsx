@@ -7,14 +7,6 @@ import { formatDurationMs } from "@/lib/time";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const STATUS_LABEL: Record<string, string> = {
-  registered: "Inscrit",
-  running: "En course",
-  finished: "Terminé",
-  abandoned: "Abandonné",
-  disqualified: "Disqualifié",
-};
-
 function formatRaceDateTime(dateIso: string, startTimeIso: string | null): string {
   const date = new Date(dateIso).toLocaleDateString("fr-FR");
   if (!startTimeIso) return date;
@@ -23,26 +15,6 @@ function formatRaceDateTime(dateIso: string, startTimeIso: string | null): strin
     minute: "2-digit",
   });
   return `${date} à ${time}`;
-}
-
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const date = d.toLocaleDateString("fr-FR");
-  const time = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-  return `${date} à ${time}`;
-}
-
-/** Date/heure réelles du résultat (arrivée, sinon départ), pas la date
- * programmée de la course — une course peut être courue à tout moment. */
-function formatResultDateTime(r: {
-  finishTimestamp: string | null;
-  startTimestamp: string | null;
-  raceDate: string;
-  raceStartTime: string | null;
-}): string {
-  if (r.finishTimestamp) return formatDateTime(r.finishTimestamp);
-  if (r.startTimestamp) return formatDateTime(r.startTimestamp);
-  return formatRaceDateTime(r.raceDate, r.raceStartTime);
 }
 
 export function AthleteDashboard() {
@@ -72,41 +44,40 @@ export function AthleteDashboard() {
           <div className="flex flex-col gap-3">
             {myRaces.map((r: any) => (
               <div
-                key={`${r.raceId}-${r.attemptNumber ?? "single"}`}
-                className="flex items-center justify-between rounded-xl border border-border bg-surface p-4"
+                key={r.raceId}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4"
               >
                 <div>
-                  <p className="font-medium">
-                    {r.raceName}
-                    {r.attemptNumber !== null && (
-                      <span className="ml-2 text-sm font-normal text-muted">
-                        — Essai {r.attemptNumber}
-                      </span>
-                    )}
-                  </p>
+                  <p className="font-medium">{r.raceName}</p>
                   <p className="text-sm text-muted">
-                    {formatResultDateTime(r)} ·{" "}
-                    {STATUS_LABEL[r.runStatus] ?? r.runStatus}
-                    {r.durationMs !== null ? ` · ${formatDurationMs(r.durationMs)}` : ""}
-                    {r.position !== null ? ` · ${r.position}${r.position === 1 ? "er" : "e"}` : ""}
+                    {formatRaceDateTime(r.raceDate, r.raceStartTime)}
+                    {r.bestDurationMs !== null
+                      ? ` · Meilleur temps ${formatDurationMs(r.bestDurationMs)}`
+                      : r.lastRunStatus === "running"
+                      ? " · En course"
+                      : " · Pas encore de temps enregistré"}
+                    {r.attemptsCount > 1 ? ` · ${r.attemptsCount} essais` : ""}
                     {r.category ? ` · ${r.category}` : ""}
                   </p>
                 </div>
-                {r.raceStatus === "active" && r.runStatus !== "finished" ? (
-                  <Link
-                    href={`/mon-espace/course/${r.raceId}`}
-                    className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-                  >
-                    Scanner
-                  </Link>
-                ) : r.runStatus === "finished" ? (
-                  <Link
-                    href={`/results/${r.raceId}`}
-                    className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
-                  >
-                    Résultats
-                  </Link>
-                ) : null}
+                <div className="flex gap-2">
+                  {r.raceStatus === "active" && (
+                    <Link
+                      href={`/mon-espace/course/${r.raceId}`}
+                      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+                    >
+                      Scanner
+                    </Link>
+                  )}
+                  {r.attemptsCount > 0 && (
+                    <Link
+                      href={`/mon-espace/course/${r.raceId}/resultats`}
+                      className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+                    >
+                      Mes résultats
+                    </Link>
+                  )}
+                </div>
               </div>
             ))}
           </div>
