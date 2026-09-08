@@ -13,6 +13,7 @@ type RunState =
 export function Chrono({ raceId }: { raceId: string }) {
   const [state, setState] = useState<RunState>({ status: "loading" });
   const [displayMs, setDisplayMs] = useState(0);
+  const [name, setName] = useState<string | null>(null);
   // Décalage (offset) entre l'horloge du téléphone et l'horloge serveur,
   // recalculé à chaque poll. Le chrono affiché = Date.now() + offset - start.
   const clockOffsetRef = useRef(0);
@@ -37,6 +38,13 @@ export function Chrono({ raceId }: { raceId: string }) {
         setOffline(false);
         const serverNow = new Date(data.serverNow).getTime();
         clockOffsetRef.current = serverNow - Date.now();
+
+        if (data.participant) {
+          const fullName = [data.participant.firstName, data.participant.lastName]
+            .filter(Boolean)
+            .join(" ");
+          setName(fullName || null);
+        }
 
         if (!data.run || data.run.status === "registered") {
           setState({ status: "not_started" });
@@ -79,6 +87,7 @@ export function Chrono({ raceId }: { raceId: string }) {
   if (state.status === "not_started") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        {name && <p className="mb-2 text-lg font-medium text-ink">{name}</p>}
         <p className="mb-4 text-sm uppercase tracking-wide text-muted">Prêt·e ?</p>
         <h1 className="mb-6 font-display text-4xl font-semibold">
           Scannez le QR code<br />DÉPART
@@ -92,6 +101,7 @@ export function Chrono({ raceId }: { raceId: string }) {
   if (state.status === "running") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+        {name && <p className="mb-2 text-lg font-medium text-ink">{name}</p>}
         <p className="mb-3 rounded-full bg-amber/15 px-4 py-1 text-sm font-medium text-amber">
           COURSE EN COURS
         </p>
@@ -119,6 +129,7 @@ export function Chrono({ raceId }: { raceId: string }) {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
+      {name && <p className="mb-2 text-lg font-medium text-ink">{name}</p>}
       <p className="mb-3 rounded-full bg-accent/15 px-4 py-1 text-sm font-medium text-accent">
         COURSE TERMINÉE
       </p>

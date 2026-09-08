@@ -9,6 +9,8 @@ import { isRateLimited, hashIp } from "@/lib/rateLimit";
 const bodySchema = z.object({
   raceId: z.string().uuid(),
   phone: z.string().min(4),
+  firstName: z.string().trim().max(100).optional(),
+  lastName: z.string().trim().max(100).optional(),
   pendingCheckpoint: z.enum(["start", "finish"]).optional(),
   pendingToken: z.string().optional(),
 });
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
 
-  const { raceId, phone, pendingCheckpoint, pendingToken } = parsed.data;
+  const { raceId, phone, firstName, lastName, pendingCheckpoint, pendingToken } = parsed.data;
 
   const race = await prisma.race.findUnique({ where: { id: raceId } });
   if (!race || race.status === "archived") {
@@ -46,10 +48,18 @@ export async function POST(request: NextRequest) {
         phoneNormalized: normalized.value,
       },
     },
-    update: {},
+    // Si le concurrent retape son prénom/nom lors d'un nouveau scan (ex.
+    // départ puis arrivée), on met à jour plutôt que d'écraser par du vide :
+    // seules les valeurs non vides envoyées remplacent les précédentes.
+    update: {
+      ...(firstName ? { firstName } : {}),
+      ...(lastName ? { lastName } : {}),
+    },
     create: {
       raceId,
       phoneNormalized: normalized.value,
+      firstName,
+      lastName,
     },
   });
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getParticipantSession } from "@/lib/session";
-import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 
 /**
@@ -51,26 +50,10 @@ export async function GET(
     return NextResponse.redirect(`${origin}${redirectTo}`);
   }
 
-  const outcome = await performScan(session.participantId, race.id, checkpoint);
-
-  await prisma.scanLog.create({
-    data: {
-      raceId: race.id,
-      participantId: session.participantId,
-      checkpoint,
-      result:
-        outcome.kind === "started" || outcome.kind === "finished"
-          ? "success"
-          : outcome.kind === "already_started" || outcome.kind === "already_finished"
-          ? "duplicate"
-          : "rejected",
-      ipHash: hashIp(ip),
-      userAgent: request.headers.get("user-agent") ?? undefined,
-    },
-  });
-
-  const outcomeParam = encodeURIComponent(JSON.stringify(outcome));
-  return NextResponse.redirect(
-    `${origin}/course/${race.id}/run?outcome=${outcomeParam}`
-  );
+  // Une session valide existe déjà pour cette course. Plutôt que de
+  // l'utiliser silencieusement, on demande confirmation : sur un téléphone
+  // partagé entre plusieurs concurrents, la session active pourrait être
+  // celle d'une autre personne que celle qui scanne actuellement.
+  const confirmUrl = `/course/${race.id}/confirm?checkpoint=${checkpoint}&token=${token}`;
+  return NextResponse.redirect(`${origin}${confirmUrl}`);
 }

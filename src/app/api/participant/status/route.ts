@@ -18,6 +18,10 @@ export async function GET() {
     return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
   }
 
+  const participant = await prisma.participant.findUnique({
+    where: { id: session.participantId },
+  });
+
   const currentRun = await prisma.run.findFirst({
     where: {
       participantId: session.participantId,
@@ -29,6 +33,9 @@ export async function GET() {
   return NextResponse.json({
     serverNow: new Date().toISOString(),
     race: { id: race.id, name: race.name, timezone: race.timezone, status: race.status },
+    participant: participant
+      ? { firstName: participant.firstName, lastName: participant.lastName }
+      : null,
     run: currentRun
       ? {
           status: currentRun.status,

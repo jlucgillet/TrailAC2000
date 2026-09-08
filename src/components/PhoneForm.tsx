@@ -16,6 +16,8 @@ export function PhoneForm({
 }) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,6 +33,8 @@ export function PhoneForm({
         body: JSON.stringify({
           raceId,
           phone,
+          firstName: firstName || undefined,
+          lastName: lastName || undefined,
           pendingCheckpoint,
           pendingToken,
         }),
@@ -72,6 +76,31 @@ export function PhoneForm({
               className="rounded-xl border border-border bg-surface px-4 py-4 text-lg text-ink placeholder:text-muted focus:border-accent"
             />
           </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-muted">Prénom</span>
+              <input
+                type="text"
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Facultatif"
+                className="rounded-xl border border-border bg-surface px-3 py-3 text-ink placeholder:text-muted focus:border-accent"
+              />
+            </label>
+            <label className="flex flex-col gap-2">
+              <span className="text-sm text-muted">Nom</span>
+              <input
+                type="text"
+                autoComplete="family-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Facultatif"
+                className="rounded-xl border border-border bg-surface px-3 py-3 text-ink placeholder:text-muted focus:border-accent"
+              />
+            </label>
+          </div>
 
           {error && (
             <p role="alert" className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">
