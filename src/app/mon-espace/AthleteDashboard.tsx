@@ -15,6 +15,16 @@ const STATUS_LABEL: Record<string, string> = {
   disqualified: "Disqualifié",
 };
 
+function formatRaceDateTime(dateIso: string, startTimeIso: string | null): string {
+  const date = new Date(dateIso).toLocaleDateString("fr-FR");
+  if (!startTimeIso) return date;
+  const time = new Date(startTimeIso).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${date} à ${time}`;
+}
+
 export function AthleteDashboard() {
   const { data, isLoading, mutate } = useSWR("/api/athlete/me", fetcher, {
     refreshInterval: 10000,
@@ -48,7 +58,7 @@ export function AthleteDashboard() {
                 <div>
                   <p className="font-medium">{r.raceName}</p>
                   <p className="text-sm text-muted">
-                    {new Date(r.raceDate).toLocaleDateString("fr-FR")} ·{" "}
+                    {formatRaceDateTime(r.raceDate, r.raceStartTime)} ·{" "}
                     {STATUS_LABEL[r.runStatus] ?? r.runStatus}
                     {r.durationMs !== null ? ` · ${formatDurationMs(r.durationMs)}` : ""}
                     {r.position !== null ? ` · ${r.position}${r.position === 1 ? "er" : "e"}` : ""}

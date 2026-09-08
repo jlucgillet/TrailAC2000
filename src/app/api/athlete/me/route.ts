@@ -30,7 +30,15 @@ export async function GET() {
       race: true,
       runs: { orderBy: { attemptNumber: "desc" }, take: 1 },
     },
-    orderBy: { race: { date: "desc" } },
+  });
+
+  // Tri par date ET heure effectives de la course (heure de départ si
+  // renseignée, sinon simplement la date), du plus récent au plus ancien —
+  // un tri sur la seule date ne distingue pas deux courses le même jour.
+  myParticipations.sort((a, b) => {
+    const timeA = (a.race.startTime ?? a.race.date).getTime();
+    const timeB = (b.race.startTime ?? b.race.date).getTime();
+    return timeB - timeA;
   });
 
   // Pour chaque course terminée, calcule le classement du concurrent parmi
@@ -56,6 +64,7 @@ export async function GET() {
         raceId: p.race.id,
         raceName: p.race.name,
         raceDate: p.race.date,
+        raceStartTime: p.race.startTime,
         raceStatus: p.race.status,
         runStatus: run?.status ?? "registered",
         durationMs: run?.durationMs ? Number(run.durationMs) : null,
