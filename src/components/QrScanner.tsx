@@ -16,9 +16,6 @@ export function QrScanner({
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const [phase, setPhase] = useState<"starting" | "running" | "error">("starting");
   const [error, setError] = useState<string | null>(null);
-  const [log, setLog] = useState<string[]>([]);
-
-  const addLog = (msg: string) => setLog((prev) => [...prev, msg]);
 
   const onDecodedRef = useRef(onDecoded);
   onDecodedRef.current = onDecoded;
@@ -37,28 +34,17 @@ export function QrScanner({
     }
 
     async function start() {
-      addLog(`Élément cible : #${containerId.current}`);
-      addLog(`Protocole : ${typeof window !== "undefined" ? window.location.protocol : "?"}`);
-
       try {
-        addLog("Chargement de html5-qrcode…");
-        const mod = await import("html5-qrcode");
-        addLog("Bibliothèque chargée.");
-        const { Html5Qrcode } = mod;
+        const { Html5Qrcode } = await import("html5-qrcode");
 
-        addLog("Recherche de l'élément dans le DOM…");
         const found = await waitForElement(containerId.current);
-        addLog(found ? "Élément trouvé." : "Élément INTROUVABLE après 4s.");
-
         if (cancelled) return;
         if (!found) {
           throw new Error("Zone d'affichage caméra introuvable dans la page.");
         }
 
-        addLog("Instanciation de Html5Qrcode…");
         const scanner = new Html5Qrcode(containerId.current);
         scannerRef.current = scanner;
-        addLog("Instance créée. Appel de start()…");
 
         await scanner.start(
           { facingMode: "environment" },
@@ -67,10 +53,10 @@ export function QrScanner({
             onDecodedRef.current(decodedText);
           },
           () => {
-            // Erreurs de décodage image par image : ignorées volontairement.
+            // Erreurs de décodage image par image : ignorées volontairement,
+            // c'est le comportement normal tant qu'aucun QR n'est dans le cadre.
           }
         );
-        addLog("start() résolu avec succès — caméra active.");
         if (!cancelled) setPhase("running");
       } catch (err: unknown) {
         if (cancelled) return;
@@ -81,26 +67,23 @@ export function QrScanner({
         if (err instanceof Error) {
           name = err.name;
           message = err.message;
-          addLog(`ERREUR — name: ${err.name}`);
-          addLog(`ERREUR — message: ${err.message}`);
-          if (err.stack) addLog(`stack (début) : ${err.stack.slice(0, 300)}`);
         } else if (typeof err === "string") {
           message = err;
-          addLog(`ERREUR (string) : ${err}`);
         } else {
           message = JSON.stringify(err);
-          addLog(`ERREUR (autre) : ${message}`);
         }
 
         let friendly: string;
         if (name === "NotAllowedError") {
-          friendly = "Accès à la caméra refusé.";
+          friendly =
+            "Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur, puis rechargez la page.";
         } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-          friendly = "Aucune caméra arrière détectée.";
+          friendly = "Aucune caméra arrière détectée sur cet appareil.";
         } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
-          friendly = "Connexion non sécurisée (https requis).";
+          friendly = "Le scan caméra nécessite une connexion sécurisée (https).";
         } else {
-          friendly = "Impossible d'activer la caméra.";
+          friendly =
+            "Impossible d'activer la caméra. Utilisez plutôt le scan classique via l'appareil photo natif de votre téléphone.";
         }
 
         setError(message ? `${friendly} (détail : ${message})` : friendly);
@@ -116,7 +99,9 @@ export function QrScanner({
         scanner
           .stop()
           .then(() => scanner.clear())
-          .catch(() => {});
+          .catch(() => {
+            /* déjà arrêté */
+          });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,7 +117,8 @@ export function QrScanner({
         scanner.resume();
       }
     } catch {
-      // best-effort
+      // Raffinement d'UX seulement : jamais laisser une exception ici
+      // faire planter toute la page.
     }
   }, [paused, phase]);
 
@@ -157,17 +143,6 @@ export function QrScanner({
           <p className="mb-3 text-sm text-danger">{error}</p>
         </div>
       )}
-
-      {/* Journal de diagnostic visible directement sur l'écran, en attendant
-          de confirmer la cause exacte du problème d'activation caméra. */}
-      <div className="mt-4 rounded-lg border border-border bg-bg p-3">
-        <p className="mb-1 text-xs font-semibold text-muted">Journal de diagnostic :</p>
-        <div className="max-h-48 overflow-y-auto font-mono text-[10px] leading-relaxed text-muted">
-          {log.map((l, i) => (
-            <div key={i}>{l}</div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
