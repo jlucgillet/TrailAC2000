@@ -138,23 +138,22 @@ export function QrScanner({
 
   return (
     <div className="mx-auto w-full max-w-sm">
-      {phase === "starting" && (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-surface p-8">
-          <p className="text-sm text-muted">Activation de la caméra…</p>
-        </div>
-      )}
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-surface">
+        {/* Toujours monté avec une vraie taille (jamais display:none) :
+            html5-qrcode calcule la taille de la vidéo au moment de start(),
+            et une zone cachée à cet instant reste ensuite invisible même
+            une fois "affichée". */}
+        <div id={containerId.current} className="h-full w-full" />
 
-      <div
-        id={containerId.current}
-        className={
-          phase === "running"
-            ? "w-full overflow-hidden rounded-2xl border border-border bg-surface"
-            : "hidden"
-        }
-      />
+        {phase === "starting" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-surface">
+            <p className="text-sm text-muted">Activation de la caméra…</p>
+          </div>
+        )}
+      </div>
 
       {phase === "error" && error && (
-        <div className="rounded-2xl border border-border bg-surface p-4 text-center">
+        <div className="mt-4 rounded-2xl border border-border bg-surface p-4 text-center">
           <p className="mb-3 text-sm text-danger">{error}</p>
         </div>
       )}
