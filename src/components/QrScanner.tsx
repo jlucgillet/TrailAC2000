@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 export function QrScanner({
   paused,
@@ -9,7 +9,12 @@ export function QrScanner({
   paused: boolean;
   onDecoded: (decodedText: string) => void;
 }) {
-  const containerId = useRef(`qr-reader-${Math.random().toString(36).slice(2)}`);
+  // useId() (et non Math.random()) : garantit le même identifiant entre le
+  // rendu serveur et l'hydratation client. Avec Math.random(), les deux
+  // valeurs divergent systématiquement, et le script ne retrouve alors
+  // jamais l'élément qu'il vient pourtant de créer.
+  const reactId = useId().replace(/:/g, "");
+  const containerId = useRef(`qr-reader-${reactId}`);
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
   const [phase, setPhase] = useState<"starting" | "running" | "error">("starting");
   const [error, setError] = useState<string | null>(null);
