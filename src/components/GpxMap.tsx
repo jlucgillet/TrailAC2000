@@ -25,7 +25,7 @@ export function GpxMap({ points }: { points: { lat: number; lon: number }[] }) {
       }).addTo(map);
 
       const latlngs: [number, number][] = points.map((p) => [p.lat, p.lon]);
-      const polyline = L.polyline(latlngs, { color: "#8FD14F", weight: 4 }).addTo(map);
+      const polyline = L.polyline(latlngs, { color: "#3B82F6", weight: 4 }).addTo(map);
       map.fitBounds(polyline.getBounds(), { padding: [24, 24] });
 
       // Marqueurs vectoriels (pas L.marker) : évite le problème classique
@@ -34,7 +34,7 @@ export function GpxMap({ points }: { points: { lat: number; lon: number }[] }) {
         radius: 8,
         color: "#0B1410",
         weight: 2,
-        fillColor: "#8FD14F",
+        fillColor: "#3B82F6",
         fillOpacity: 1,
       })
         .addTo(map)
