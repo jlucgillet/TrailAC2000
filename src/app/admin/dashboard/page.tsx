@@ -36,14 +36,14 @@ export default async function DashboardPage() {
           <p className="text-muted">Aucune course pour le moment. Créez-en une ci-dessous.</p>
         ) : (
           <div className="flex flex-col gap-8">
-            <RaceGroup title="Actives" races={active} accent />
-            <RaceGroup title="Brouillons" races={drafts} />
-            <RaceGroup title="Clôturées" races={closed} />
+            <RaceGroup id="actives" title="Actives" races={active} accent />
+            <RaceGroup id="brouillons" title="Brouillons" races={drafts} />
+            <RaceGroup id="cloturees" title="Clôturées" races={closed} />
           </div>
         )}
       </section>
 
-      <section>
+      <section id="nouvelle-course" className="scroll-mt-24">
         <h2 className="mb-4 font-display text-2xl font-semibold">Nouvelle course</h2>
         <NewRaceForm />
       </section>
@@ -52,10 +52,12 @@ export default async function DashboardPage() {
 }
 
 function RaceGroup({
+  id,
   title,
   races,
   accent = false,
 }: {
+  id: string;
   title: string;
   races: RaceWithCount[];
   accent?: boolean;
@@ -63,7 +65,7 @@ function RaceGroup({
   if (races.length === 0) return null;
 
   return (
-    <div>
+    <div id={id} className="scroll-mt-24">
       <h3
         className={`mb-3 flex items-center gap-2 font-display text-lg font-semibold ${
           accent ? "text-accent" : "text-muted"
