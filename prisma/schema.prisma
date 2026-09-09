@@ -67,6 +67,7 @@ model Race {
   qrFinishToken String @unique @default(uuid())
 
   publicResultsEnabled Boolean @default(true)
+  openRegistration     Boolean @default(true)
 
   adminId String
   admin   Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)

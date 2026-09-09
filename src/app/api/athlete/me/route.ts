@@ -81,6 +81,7 @@ export async function GET() {
   const joinableRaces = await prisma.race.findMany({
     where: {
       status: "active",
+      openRegistration: true,
       id: { notIn: joinedRaceIds.length > 0 ? joinedRaceIds : undefined },
     },
     orderBy: { date: "desc" },

@@ -7,6 +7,7 @@ type Race = {
   name: string;
   status: "draft" | "active" | "closed" | "archived";
   publicResultsEnabled: boolean;
+  openRegistration: boolean;
 };
 
 const STATUS_OPTIONS: { value: Race["status"]; label: string; hint: string }[] = [
@@ -81,6 +82,29 @@ export function SettingsTab({
           <span>
             Autoriser la consultation publique des résultats (sans numéro de téléphone) à l&rsquo;adresse{" "}
             <code className="text-muted">/results/{race.id}</code>
+          </span>
+        </label>
+      </section>
+
+      <section>
+        <h3 className="mb-3 font-display text-xl font-semibold">Inscription des concurrents</h3>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={race.openRegistration}
+            onChange={(e) => updateField({ openRegistration: e.target.checked })}
+            className="mt-1"
+          />
+          <span>
+            <span className="block">
+              Autoriser un concurrent à participer sans faire partie de la liste
+            </span>
+            <span className="block text-sm text-muted">
+              Activé (recommandé) : n&rsquo;importe qui peut s&rsquo;identifier par téléphone et
+              participer. Désactivé : seuls les numéros déjà présents dans l&rsquo;onglet
+              Concurrents (ajout manuel, import CSV ou copie depuis une autre course) peuvent
+              s&rsquo;identifier et scanner — un numéro inconnu est refusé.
+            </span>
           </span>
         </label>
       </section>

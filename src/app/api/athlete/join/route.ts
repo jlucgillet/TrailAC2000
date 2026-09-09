@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getAthleteSession } from "@/lib/session";
+import { canRegisterForRace } from "@/lib/registration";
 
 const bodySchema = z.object({ raceId: z.string().uuid() });
 
@@ -22,6 +23,11 @@ export async function POST(request: NextRequest) {
       { error: "Cette course n'est pas ouverte au chronométrage." },
       { status: 400 }
     );
+  }
+
+  const eligibility = await canRegisterForRace(race.id, session.phoneNormalized, race.openRegistration);
+  if (!eligibility.allowed) {
+    return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
   const participant = await prisma.participant.upsert({

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { getAthleteSession } from "@/lib/session";
 import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
+import { canRegisterForRace } from "@/lib/registration";
 
 const bodySchema = z.object({
   raceId: z.string().uuid(),
@@ -63,6 +64,11 @@ export async function POST(request: NextRequest) {
   }
   if (race.status !== "active") {
     return NextResponse.json({ error: "Cette course n'est pas (ou plus) ouverte au chronométrage." }, { status: 400 });
+  }
+
+  const eligibility = await canRegisterForRace(race.id, session.phoneNormalized, race.openRegistration);
+  if (!eligibility.allowed) {
+    return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
   const participant = await prisma.participant.upsert({

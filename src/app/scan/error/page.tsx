@@ -3,6 +3,8 @@ const MESSAGES: Record<string, string> = {
   unknown_race: "Ce QR code correspond à une autre course, ou n'existe plus.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
   rate_limited: "Trop de scans détectés depuis cet appareil. Patientez un instant et réessayez.",
+  not_registered:
+    "Cette course est réservée aux concurrents déjà inscrits. Contactez l'organisateur pour vous inscrire.",
 };
 
 export default function ScanErrorPage({

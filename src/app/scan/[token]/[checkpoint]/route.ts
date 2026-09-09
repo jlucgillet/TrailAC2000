@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getParticipantSession, getAthleteSession, createParticipantSession } from "@/lib/session";
 import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
+import { canRegisterForRace } from "@/lib/registration";
 
 /**
  * Point d'entrée atteint quand un concurrent scanne un QR code
@@ -55,6 +56,17 @@ export async function GET(
     if (!athleteSession) {
       const redirectTo = `/course/${race.id}?pendingCheckpoint=${checkpoint}&pendingToken=${token}`;
       return NextResponse.redirect(`${origin}${redirectTo}`);
+    }
+
+    const eligibility = await canRegisterForRace(
+      race.id,
+      athleteSession.phoneNormalized,
+      race.openRegistration
+    );
+    if (!eligibility.allowed) {
+      return NextResponse.redirect(
+        `${origin}/scan/error?reason=not_registered&race=${race.id}`
+      );
     }
 
     const participant = await prisma.participant.upsert({

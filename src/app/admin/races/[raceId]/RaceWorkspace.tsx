@@ -15,6 +15,7 @@ type Race = {
   location: string | null;
   distanceKm: number | null;
   publicResultsEnabled: boolean;
+  openRegistration: boolean;
 };
 
 const TABS = [

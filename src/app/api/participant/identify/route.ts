@@ -5,6 +5,7 @@ import { normalizePhone } from "@/lib/phone";
 import { createParticipantSession } from "@/lib/session";
 import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
+import { canRegisterForRace } from "@/lib/registration";
 
 const bodySchema = z.object({
   raceId: z.string().uuid(),
@@ -39,6 +40,11 @@ export async function POST(request: NextRequest) {
   const normalized = normalizePhone(phone);
   if (!normalized.ok) {
     return NextResponse.json({ error: normalized.error }, { status: 400 });
+  }
+
+  const eligibility = await canRegisterForRace(raceId, normalized.value, race.openRegistration);
+  if (!eligibility.allowed) {
+    return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
   const participant = await prisma.participant.upsert({
