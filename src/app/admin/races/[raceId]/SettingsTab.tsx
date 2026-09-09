@@ -5,6 +5,8 @@ import { useState } from "react";
 type Race = {
   id: string;
   name: string;
+  date: string;
+  location: string | null;
   status: "draft" | "active" | "closed" | "archived";
   publicResultsEnabled: boolean;
   openRegistration: boolean;
@@ -26,6 +28,11 @@ export function SettingsTab({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [name, setName] = useState(race.name);
+  const [date, setDate] = useState(race.date.slice(0, 10));
+  const [location, setLocation] = useState(race.location ?? "");
+  const [infoSaved, setInfoSaved] = useState(false);
+
   async function updateField(patch: Partial<Race>) {
     setSaving(true);
     setError(null);
@@ -43,8 +50,62 @@ export function SettingsTab({
     onUpdate(patch);
   }
 
+  async function handleSaveInfo(e: React.FormEvent) {
+    e.preventDefault();
+    setInfoSaved(false);
+    await updateField({
+      name,
+      date: new Date(date).toISOString(),
+      location,
+    });
+    setInfoSaved(true);
+  }
+
   return (
     <div className="flex max-w-xl flex-col gap-8">
+      <section>
+        <h3 className="mb-3 font-display text-xl font-semibold">Informations générales</h3>
+        <form onSubmit={handleSaveInfo} className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-muted">Nom de la course</span>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              className="rounded-lg border border-border bg-surface px-3 py-2"
+            />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-muted">Date</span>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="rounded-lg border border-border bg-surface px-3 py-2"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-muted">Lieu</span>
+              <input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="rounded-lg border border-border bg-surface px-3 py-2"
+              />
+            </label>
+          </div>
+          <button
+            type="submit"
+            disabled={saving}
+            className="mt-1 w-fit rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
+          >
+            {saving ? "Enregistrement…" : "Enregistrer"}
+          </button>
+          {infoSaved && !error && <p className="text-sm text-accent">Enregistré.</p>}
+        </form>
+      </section>
+
       <section>
         <h3 className="mb-3 font-display text-xl font-semibold">Statut de la course</h3>
         <div className="flex flex-col gap-2">
