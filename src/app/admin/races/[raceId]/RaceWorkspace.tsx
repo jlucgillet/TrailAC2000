@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DashboardTab } from "./DashboardTab";
 import { QrCodesTab } from "./QrCodesTab";
+import { ParcoursTab } from "./ParcoursTab";
 import { ParticipantsTab } from "./ParticipantsTab";
 import { ResultsTab } from "./ResultsTab";
 import { SettingsTab } from "./SettingsTab";
@@ -21,6 +22,7 @@ type Race = {
 const TABS = [
   { id: "dashboard", label: "Tableau de bord" },
   { id: "qrcodes", label: "QR codes" },
+  { id: "parcours", label: "Parcours" },
   { id: "participants", label: "Concurrents" },
   { id: "results", label: "Résultats" },
   { id: "settings", label: "Réglages" },
@@ -70,6 +72,7 @@ export function RaceWorkspace({ race: initialRace }: { race: Race }) {
 
       {tab === "dashboard" && <DashboardTab raceId={race.id} />}
       {tab === "qrcodes" && <QrCodesTab raceId={race.id} raceName={race.name} />}
+      {tab === "parcours" && <ParcoursTab raceId={race.id} />}
       {tab === "participants" && <ParticipantsTab raceId={race.id} />}
       {tab === "results" && <ResultsTab raceId={race.id} />}
       {tab === "settings" && (

@@ -57,6 +57,8 @@ model Race {
   startTime   DateTime?
   location    String?
   distanceKm  Float?
+  elevationGainM Float?
+  gpxData        String? @db.Text
   timezone    String     @default("Europe/Paris")
   status      RaceStatus @default(draft)
 
