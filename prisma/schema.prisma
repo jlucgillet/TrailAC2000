@@ -45,6 +45,8 @@ model Admin {
   createdAt    DateTime @default(now())
 
   races Race[]
+  
+  tracks Track[]
 
   @@map("admins")
 }
@@ -160,4 +162,20 @@ model ScanLog {
 
   @@index([raceId, serverTimestamp])
   @@map("scan_logs")
+}
+
+model Track {
+  id             String   @id @default(uuid())
+  name           String
+  distanceKm     Float
+  elevationGainM Float
+  gpxData        String   @db.Text
+
+  adminId String
+  admin   Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tracks")
 }
