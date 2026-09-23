@@ -14,6 +14,7 @@ export function AdminsTab() {
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -147,35 +148,149 @@ export function AdminsTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {admins.map((a: any) => (
-                <tr key={a.id}>
-                  <td className="px-4 py-3">
-                    {[a.firstName, a.lastName].filter(Boolean).join(" ") || "—"}
-                  </td>
-                  <td className="px-4 py-3">
-                    {a.email}
-                    {a.isSelf && <span className="ml-2 text-xs text-muted">(vous)</span>}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums text-muted">{a.racesCount}</td>
-                  <td className="px-4 py-3 text-muted">
-                    {new Date(a.createdAt).toLocaleDateString("fr-FR")}
-                  </td>
-                  <td className="px-4 py-3">
-                    {!a.isSelf && (
-                      <button
-                        onClick={() => handleDelete(a.id, a.email)}
-                        className="rounded-lg border border-danger px-3 py-1.5 text-xs text-danger"
-                      >
-                        Supprimer
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
+              {admins.map((a: any) =>
+                editingId === a.id ? (
+                  <EditAdminRow
+                    key={a.id}
+                    admin={a}
+                    onCancel={() => setEditingId(null)}
+                    onSaved={() => {
+                      setEditingId(null);
+                      mutate();
+                    }}
+                  />
+                ) : (
+                  <tr key={a.id}>
+                    <td className="px-4 py-3">
+                      {[a.firstName, a.lastName].filter(Boolean).join(" ") || "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {a.email}
+                      {a.isSelf && <span className="ml-2 text-xs text-muted">(vous)</span>}
+                    </td>
+                    <td className="px-4 py-3 tabular-nums text-muted">{a.racesCount}</td>
+                    <td className="px-4 py-3 text-muted">
+                      {new Date(a.createdAt).toLocaleDateString("fr-FR")}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setEditingId(a.id)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
+                        >
+                          Modifier
+                        </button>
+                        {!a.isSelf && (
+                          <button
+                            onClick={() => handleDelete(a.id, a.email)}
+                            className="rounded-lg border border-danger px-3 py-1.5 text-xs text-danger"
+                          >
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              )}
             </tbody>
           </table>
         </div>
       )}
     </div>
+  );
+}
+
+function EditAdminRow({
+  admin,
+  onCancel,
+  onSaved,
+}: {
+  admin: any;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(admin.firstName ?? "");
+  const [lastName, setLastName] = useState(admin.lastName ?? "");
+  const [password, setPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    if (password && password.length < 8) {
+      setError("Le mot de passe doit faire au moins 8 caractères.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/users/admins/${admin.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        ...(password ? { password } : {}),
+      }),
+    });
+    const result = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(result.error ?? "Erreur lors de l'enregistrement.");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <tr>
+      <td colSpan={4} className="px-4 py-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Prénom</span>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Nom</span>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Nouveau mot de passe (facultatif)</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Laisser vide pour ne pas changer"
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      </td>
+      <td className="px-4 py-4 align-bottom">
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-bg disabled:opacity-50"
+          >
+            {saving ? "…" : "Enregistrer"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted"
+          >
+            Annuler
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
