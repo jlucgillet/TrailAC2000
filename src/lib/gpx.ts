@@ -1,20 +1,24 @@
 export type GpxPoint = { lat: number; lon: number; ele: number | null };
 
 /**
- * Extrait les points de trace d'un fichier GPX (balises <trkpt lat lon><ele>).
+ * Extrait les points d'un fichier GPX. Deux formats standards existent et
+ * sont tous deux acceptés :
+ *  - <trk><trkseg><trkpt lat lon><ele>...</trkpt></trkseg></trk> (le plus
+ *    courant : Strava, Garmin Connect, Komoot...)
+ *  - <rte><rtept lat lon><ele>...</rtept></rte> ("points de route", utilisé
+ *    par certaines apps comme Sports Tracker)
  * Analyse volontairement simple (regex plutôt qu'un parseur XML complet) :
- * suffisant pour les exports standards (Strava, Garmin Connect, Komoot...),
- * et utilisable aussi bien côté serveur que dans le navigateur sans
- * dépendance supplémentaire.
+ * suffisant pour ces exports standards, et utilisable aussi bien côté
+ * serveur que dans le navigateur sans dépendance supplémentaire.
  */
 export function parseGpxPoints(xml: string): GpxPoint[] {
   const points: GpxPoint[] = [];
-  const trkptRegex = /<trkpt\b([^>]*)>([\s\S]*?)<\/trkpt>/g;
+  const pointRegex = /<(trkpt|rtept)\b([^>]*)>([\s\S]*?)<\/\1>/g;
   let match: RegExpExecArray | null;
 
-  while ((match = trkptRegex.exec(xml))) {
-    const attrs = match[1];
-    const body = match[2];
+  while ((match = pointRegex.exec(xml))) {
+    const attrs = match[2];
+    const body = match[3];
     const latMatch = attrs.match(/lat="(-?[\d.]+)"/);
     const lonMatch = attrs.match(/lon="(-?[\d.]+)"/);
     if (!latMatch || !lonMatch) continue;

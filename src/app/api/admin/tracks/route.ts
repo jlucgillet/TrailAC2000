@@ -4,9 +4,9 @@ import { requireAdmin } from "@/lib/requireAdmin";
 import { parseGpxPoints, computeGpxStats } from "@/lib/gpx";
 
 function generateTrackName(distanceKm: number, elevationGainM: number): string {
-  const km = Math.round(distanceKm * 10) / 10;
+  const km = Math.round(distanceKm);
   const dplus = Math.round(elevationGainM);
-  return `AC2000-${km}km-${dplus}m`;
+  return `AC2000-${km}-${dplus}`;
 }
 
 export async function GET() {
