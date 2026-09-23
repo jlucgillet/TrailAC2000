@@ -17,6 +17,8 @@ export async function GET() {
     admins: admins.map((a) => ({
       id: a.id,
       email: a.email,
+      firstName: a.firstName,
+      lastName: a.lastName,
       createdAt: a.createdAt,
       racesCount: a._count.races,
       isSelf: a.id === session.adminId,
@@ -27,6 +29,8 @@ export async function GET() {
 const createSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "8 caractères minimum."),
+  firstName: z.string().trim().max(100).optional(),
+  lastName: z.string().trim().max(100).optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -48,7 +52,12 @@ export async function POST(request: NextRequest) {
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   const admin = await prisma.admin.create({
-    data: { email: parsed.data.email, passwordHash },
+    data: {
+      email: parsed.data.email,
+      passwordHash,
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+    },
   });
 
   return NextResponse.json({ id: admin.id, email: admin.email }, { status: 201 });

@@ -3,10 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-async function ownedRace(raceId: string, adminId: string) {
-  return prisma.race.findFirst({ where: { id: raceId, adminId } });
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: { raceId: string } }
@@ -14,7 +10,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   return NextResponse.json({ race });
@@ -40,7 +36,7 @@ export async function PATCH(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const parsed = updateSchema.safeParse(await request.json().catch(() => null));
@@ -68,10 +64,9 @@ export async function DELETE(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
-  // Archivage plutôt que suppression physique par défaut (traçabilité RGPD-compatible).
   await prisma.race.update({ where: { id: race.id }, data: { status: "archived" } });
 
   return NextResponse.json({ ok: true });

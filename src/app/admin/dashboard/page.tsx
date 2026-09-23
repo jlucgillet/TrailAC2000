@@ -10,9 +10,12 @@ type RaceWithCount = Prisma.RaceGetPayload<{
 
 export default async function DashboardPage() {
   const session = await getAdminSession();
+
+  // Tous les administrateurs voient toutes les courses (équipe de
+  // confiance unique) : pas de filtre par adminId.
   const races = session
     ? await prisma.race.findMany({
-        where: { adminId: session.adminId, status: { not: "archived" } },
+        where: { status: { not: "archived" } },
         include: { _count: { select: { participants: true } } },
       })
     : [];
@@ -30,7 +33,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-10">
       <section>
-        <h1 className="mb-6 font-display text-3xl font-semibold">Vos courses</h1>
+        <h1 className="mb-6 font-display text-3xl font-semibold">Courses</h1>
 
         {races.length === 0 ? (
           <p className="text-muted">Aucune course pour le moment. Créez-en une ci-dessous.</p>

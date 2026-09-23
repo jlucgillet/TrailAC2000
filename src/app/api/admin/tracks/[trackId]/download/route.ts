@@ -9,9 +9,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const track = await prisma.track.findFirst({
-    where: { id: params.trackId, adminId: session.adminId },
-  });
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
   if (!track) return NextResponse.json({ error: "Parcours introuvable." }, { status: 404 });
 
   const safeName = track.name.replace(/[^a-zA-Z0-9-_]+/g, "-");

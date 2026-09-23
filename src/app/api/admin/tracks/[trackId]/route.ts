@@ -3,10 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-async function ownedTrack(trackId: string, adminId: string) {
-  return prisma.track.findFirst({ where: { id: trackId, adminId } });
-}
-
 export async function GET(
   _request: NextRequest,
   { params }: { params: { trackId: string } }
@@ -14,7 +10,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const track = await ownedTrack(params.trackId, session.adminId);
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
   if (!track) return NextResponse.json({ error: "Parcours introuvable." }, { status: 404 });
 
   return NextResponse.json({
@@ -35,7 +31,7 @@ export async function PATCH(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const track = await ownedTrack(params.trackId, session.adminId);
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
   if (!track) return NextResponse.json({ error: "Parcours introuvable." }, { status: 404 });
 
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
@@ -58,7 +54,7 @@ export async function DELETE(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const track = await ownedTrack(params.trackId, session.adminId);
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
   if (!track) return NextResponse.json({ error: "Parcours introuvable." }, { status: 404 });
 
   await prisma.track.delete({ where: { id: track.id } });

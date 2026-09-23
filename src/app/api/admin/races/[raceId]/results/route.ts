@@ -9,9 +9,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const participants = await prisma.participant.findMany({
@@ -55,12 +53,16 @@ export async function GET(
     started: rows.filter((r) => r.status === "running" || r.status === "finished").length,
     finished: rows.filter((r) => r.status === "finished").length,
     running: rows.filter((r) => r.status === "running").length,
-    bestDurationMs: rows.filter((r) => r.durationMs !== null).sort((a, b) => (a.durationMs ?? 0) - (b.durationMs ?? 0))[0]?.durationMs ?? null,
+    bestDurationMs:
+      rows
+        .filter((r) => r.durationMs !== null)
+        .sort((a, b) => (a.durationMs ?? 0) - (b.durationMs ?? 0))[0]?.durationMs ?? null,
     lastFinishedName:
       [...rows]
         .filter((r) => r.finishTimestamp)
-        .sort((a, b) => new Date(b.finishTimestamp!).getTime() - new Date(a.finishTimestamp!).getTime())[0]
-        ?.displayName ?? null,
+        .sort(
+          (a, b) => new Date(b.finishTimestamp!).getTime() - new Date(a.finishTimestamp!).getTime()
+        )[0]?.displayName ?? null,
   };
 
   return NextResponse.json({ race, stats, results: ranked });

@@ -41,6 +41,8 @@ enum ScanResult {
 model Admin {
   id           String   @id @default(uuid())
   email        String   @unique
+  firstName 	String?
+  lastName  	String?
   passwordHash String
   createdAt    DateTime @default(now())
 

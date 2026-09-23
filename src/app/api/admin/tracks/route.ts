@@ -13,8 +13,8 @@ export async function GET() {
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
+  // Tous les administrateurs ont accès à tous les parcours.
   const tracks = await prisma.track.findMany({
-    where: { adminId: session.adminId },
     orderBy: { createdAt: "desc" },
   });
 

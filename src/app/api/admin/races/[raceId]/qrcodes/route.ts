@@ -11,9 +11,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? request.nextUrl.origin;
@@ -31,7 +29,6 @@ export async function GET(
   });
 }
 
-/** Régénère un ou les deux tokens (invalide les QR codes déjà imprimés). */
 export async function POST(
   request: NextRequest,
   { params }: { params: { raceId: string } }
@@ -39,9 +36,7 @@ export async function POST(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const body = await request.json().catch(() => ({}));

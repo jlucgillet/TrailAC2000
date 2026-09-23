@@ -8,6 +8,8 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 export function AdminsTab() {
   const { data, isLoading, mutate } = useSWR("/api/admin/users/admins", fetcher);
   const [open, setOpen] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [creating, setCreating] = useState(false);
@@ -20,7 +22,12 @@ export function AdminsTab() {
     const res = await fetch("/api/admin/users/admins", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        firstName: firstName || undefined,
+        lastName: lastName || undefined,
+      }),
     });
     const result = await res.json();
     setCreating(false);
@@ -28,6 +35,8 @@ export function AdminsTab() {
       setError(result.error ?? "Erreur lors de la création.");
       return;
     }
+    setFirstName("");
+    setLastName("");
     setEmail("");
     setPassword("");
     setOpen(false);
@@ -59,8 +68,24 @@ export function AdminsTab() {
       ) : (
         <form
           onSubmit={handleCreate}
-          className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-surface p-4"
+          className="grid gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2"
         >
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-muted">Prénom</span>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-muted">Nom</span>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
           <label className="flex flex-col gap-1">
             <span className="text-sm text-muted">Email</span>
             <input
@@ -82,24 +107,28 @@ export function AdminsTab() {
               className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
             />
           </label>
-          <button
-            type="submit"
-            disabled={creating}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
-          >
-            {creating ? "Création…" : "Créer"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              setError(null);
-            }}
-            className="text-sm text-muted underline"
-          >
-            Annuler
-          </button>
-          {error && <p className="w-full text-sm text-danger">{error}</p>}
+
+          {error && <p className="text-sm text-danger sm:col-span-2">{error}</p>}
+
+          <div className="flex gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              disabled={creating}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
+            >
+              {creating ? "Création…" : "Créer"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setError(null);
+              }}
+              className="text-sm text-muted underline"
+            >
+              Annuler
+            </button>
+          </div>
         </form>
       )}
 
@@ -107,9 +136,10 @@ export function AdminsTab() {
         <p className="text-muted">Chargement…</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[480px] text-left text-sm">
+          <table className="w-full min-w-[560px] text-left text-sm">
             <thead className="bg-surface text-muted">
               <tr>
+                <th className="px-4 py-3 font-medium">Nom</th>
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">Courses créées</th>
                 <th className="px-4 py-3 font-medium">Depuis le</th>
@@ -119,6 +149,9 @@ export function AdminsTab() {
             <tbody className="divide-y divide-border">
               {admins.map((a: any) => (
                 <tr key={a.id}>
+                  <td className="px-4 py-3">
+                    {[a.firstName, a.lastName].filter(Boolean).join(" ") || "—"}
+                  </td>
                   <td className="px-4 py-3">
                     {a.email}
                     {a.isSelf && <span className="ml-2 text-xs text-muted">(vous)</span>}

@@ -4,8 +4,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
 
-async function ownedParticipant(raceId: string, participantId: string, adminId: string) {
-  const race = await prisma.race.findFirst({ where: { id: raceId, adminId } });
+async function accessibleParticipant(raceId: string, participantId: string) {
+  const race = await prisma.race.findUnique({ where: { id: raceId } });
   if (!race) return null;
   const participant = await prisma.participant.findFirst({
     where: { id: participantId, raceId },
@@ -27,8 +27,8 @@ export async function POST(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const owned = await ownedParticipant(params.raceId, params.participantId, session.adminId);
-  if (!owned) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+  const accessible = await accessibleParticipant(params.raceId, params.participantId);
+  if (!accessible) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
 
   const runningRun = await prisma.run.findFirst({
     where: { participantId: params.participantId, status: "running" },
@@ -59,8 +59,6 @@ export async function POST(
 
 /**
  * Supprime le run le plus récent d'un concurrent (remet à "aucun résultat").
- * La fiche du concurrent (inscription) n'est pas supprimée : il redevient
- * simplement "Inscrit", prêt à rescanner DÉPART si besoin.
  */
 export async function DELETE(
   _request: NextRequest,
@@ -69,8 +67,8 @@ export async function DELETE(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const owned = await ownedParticipant(params.raceId, params.participantId, session.adminId);
-  if (!owned) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+  const accessible = await accessibleParticipant(params.raceId, params.participantId);
+  if (!accessible) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
 
   const run = await prisma.run.findFirst({
     where: { participantId: params.participantId },
@@ -93,9 +91,8 @@ const patchSchema = z.object({
 
 /**
  * Corrige manuellement l'heure de départ et/ou d'arrivée d'un concurrent.
- * Contourne explicitement la protection anti-modification (réservée aux
- * corrections légitimes de l'organisateur) via le flag de session SQL
- * app.bypass_immutability, positionné uniquement dans cette route.
+ * Contourne explicitement la protection anti-modification via le flag de
+ * session SQL app.bypass_immutability, positionné uniquement ici.
  */
 export async function PATCH(
   request: NextRequest,
@@ -104,8 +101,8 @@ export async function PATCH(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const owned = await ownedParticipant(params.raceId, params.participantId, session.adminId);
-  if (!owned) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
+  const accessible = await accessibleParticipant(params.raceId, params.participantId);
+  if (!accessible) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
 
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {

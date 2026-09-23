@@ -10,9 +10,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const participants = await prisma.participant.findMany({

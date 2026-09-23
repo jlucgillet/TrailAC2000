@@ -11,9 +11,7 @@ export default async function RaceDetailPage({
   const session = await getAdminSession();
   if (!session) notFound();
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) notFound();
 
   return <RaceWorkspace race={JSON.parse(JSON.stringify(race))} />;

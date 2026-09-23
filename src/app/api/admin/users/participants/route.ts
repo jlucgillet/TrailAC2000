@@ -10,7 +10,6 @@ export async function GET(request: NextRequest) {
 
   const participants = await prisma.participant.findMany({
     where: {
-      race: { adminId: session.adminId },
       ...(search
         ? {
             OR: [

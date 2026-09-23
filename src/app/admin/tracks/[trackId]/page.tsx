@@ -11,9 +11,7 @@ export default async function TrackDetailPage({
   const session = await getAdminSession();
   if (!session) notFound();
 
-  const track = await prisma.track.findFirst({
-    where: { id: params.trackId, adminId: session.adminId },
-  });
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
   if (!track) notFound();
 
   return (

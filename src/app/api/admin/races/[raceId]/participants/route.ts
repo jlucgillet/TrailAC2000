@@ -11,9 +11,7 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const search = request.nextUrl.searchParams.get("q")?.trim();
@@ -36,7 +34,6 @@ export async function GET(
     orderBy: { createdAt: "asc" },
   });
 
-  // BigInt (durationMs) n'est pas sérialisable nativement en JSON.
   const serializable = participants.map((p) => ({
     ...p,
     runs: p.runs.map((r) => ({
@@ -65,9 +62,7 @@ export async function POST(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await prisma.race.findFirst({
-    where: { id: params.raceId, adminId: session.adminId },
-  });
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const parsed = addSchema.safeParse(await request.json().catch(() => null));

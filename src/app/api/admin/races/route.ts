@@ -7,8 +7,9 @@ export async function GET() {
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
+  // Tous les administrateurs ont le même accès à toutes les courses
+  // (équipe de confiance unique) : pas de filtre par adminId.
   const races = await prisma.race.findMany({
-    where: { adminId: session.adminId },
     orderBy: { date: "desc" },
     include: { _count: { select: { participants: true } } },
   });
@@ -19,7 +20,7 @@ export async function GET() {
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  date: z.string(), // ISO date
+  date: z.string(),
   startTime: z.string().optional(),
   location: z.string().optional(),
   distanceKm: z.number().optional(),
@@ -32,7 +33,10 @@ export async function POST(request: NextRequest) {
 
   const parsed = createSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Données invalides.", details: parsed.error.flatten() }, { status: 400 });
+    return NextResponse.json(
+      { error: "Données invalides.", details: parsed.error.flatten() },
+      { status: 400 }
+    );
   }
   const data = parsed.data;
 
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
       location: data.location,
       distanceKm: data.distanceKm,
       timezone: data.timezone,
-      adminId: session.adminId,
+      adminId: session.adminId, // trace du créateur ; ne restreint plus l'accès
       status: "draft",
     },
   });
