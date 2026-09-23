@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -14,6 +14,15 @@ type Participant = {
   phoneNormalized: string;
 };
 
+type SortKey = "bibNumber" | "name" | "category" | "phoneNormalized";
+
+function compare(a: unknown, b: unknown): number {
+  if (a === null || a === undefined || a === "") return b ? 1 : 0;
+  if (b === null || b === undefined || b === "") return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), "fr");
+}
+
 export function ParticipantsTab({ raceId }: { raceId: string }) {
   const [query, setQuery] = useState("");
   const { data, mutate } = useSWR(
@@ -22,6 +31,17 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
   );
   const [importMessage, setImportMessage] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("bibNumber");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  function handleSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -48,6 +68,35 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
   }
 
   const participants: Participant[] = data?.participants ?? [];
+
+  const sorted = useMemo(() => {
+    const withKeys = participants.map((p) => ({
+      p,
+      name: [p.firstName, p.lastName].filter(Boolean).join(" "),
+    }));
+    withKeys.sort((a, b) => {
+      const va = sortKey === "name" ? a.name : sortKey === "phoneNormalized" ? a.p.phoneNormalized : a.p[sortKey];
+      const vb = sortKey === "name" ? b.name : sortKey === "phoneNormalized" ? b.p.phoneNormalized : b.p[sortKey];
+      const result = compare(va, vb);
+      return sortDir === "asc" ? result : -result;
+    });
+    return withKeys.map((x) => x.p);
+  }, [participants, sortKey, sortDir]);
+
+  const SortHeader = ({ label, sortKeyFor }: { label: string; sortKeyFor: SortKey }) => {
+    const active = sortKey === sortKeyFor;
+    return (
+      <th className="px-4 py-3 font-medium">
+        <button
+          onClick={() => handleSort(sortKeyFor)}
+          className={`flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""}`}
+        >
+          {label}
+          <span className="text-[10px]">{active ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}</span>
+        </button>
+      </th>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -77,14 +126,14 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="bg-surface text-muted">
             <tr>
-              <th className="px-4 py-3 font-medium">Dossard</th>
-              <th className="px-4 py-3 font-medium">Nom</th>
-              <th className="px-4 py-3 font-medium">Catégorie</th>
-              <th className="px-4 py-3 font-medium">Téléphone</th>
+              <SortHeader label="Dossard" sortKeyFor="bibNumber" />
+              <SortHeader label="Nom" sortKeyFor="name" />
+              <SortHeader label="Catégorie" sortKeyFor="category" />
+              <SortHeader label="Téléphone" sortKeyFor="phoneNormalized" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {participants.map((p) => (
+            {sorted.map((p) => (
               <tr key={p.id}>
                 <td className="px-4 py-3 tabular-nums">{p.bibNumber ?? "—"}</td>
                 <td className="px-4 py-3">{[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}</td>
@@ -92,7 +141,7 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
                 <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
               </tr>
             ))}
-            {participants.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-muted">
                   Aucun concurrent pour le moment.

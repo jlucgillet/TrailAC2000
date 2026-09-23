@@ -21,33 +21,73 @@ const STATUS_LABEL: Record<string, string> = {
   disqualified: "Disqualifié",
 };
 
+export type ResultSortKey =
+  | "position"
+  | "displayName"
+  | "bibNumber"
+  | "category"
+  | "phone"
+  | "durationMs"
+  | "status";
+
 export function ResultsTable({
   rows,
   showTimestamps = false,
   showPhone = false,
   renderActions,
+  sortKey,
+  sortDir,
+  onSortChange,
 }: {
   rows: ResultRow[];
   showTimestamps?: boolean;
   showPhone?: boolean;
   renderActions?: (row: ResultRow) => React.ReactNode;
+  /** Fournir sortKey/sortDir/onSortChange rend les en-têtes cliquables (usage admin). */
+  sortKey?: ResultSortKey;
+  sortDir?: "asc" | "desc";
+  onSortChange?: (key: ResultSortKey) => void;
 }) {
   const columnCount = 6 + (showTimestamps ? 2 : 0) + (showPhone ? 1 : 0) + (renderActions ? 1 : 0);
+
+  const Th = ({
+    label,
+    sortKeyFor,
+  }: {
+    label: string;
+    sortKeyFor?: ResultSortKey;
+  }) => {
+    if (!onSortChange || !sortKeyFor) {
+      return <th className="px-4 py-3 font-medium">{label}</th>;
+    }
+    const active = sortKey === sortKeyFor;
+    return (
+      <th className="px-4 py-3 font-medium">
+        <button
+          onClick={() => onSortChange(sortKeyFor)}
+          className={`flex items-center gap-1 hover:text-ink ${active ? "text-ink" : ""}`}
+        >
+          {label}
+          <span className="text-[10px]">{active ? (sortDir === "asc" ? "▲" : "▼") : "⇅"}</span>
+        </button>
+      </th>
+    );
+  };
 
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full min-w-[560px] text-left text-sm">
         <thead className="bg-surface text-muted">
           <tr>
-            <th className="px-4 py-3 font-medium">Pos.</th>
-            <th className="px-4 py-3 font-medium">Dossard</th>
-            <th className="px-4 py-3 font-medium">Concurrent</th>
-            {showPhone && <th className="px-4 py-3 font-medium">Téléphone</th>}
-            <th className="px-4 py-3 font-medium">Catégorie</th>
+            <Th label="Pos." sortKeyFor="position" />
+            <Th label="Dossard" sortKeyFor="bibNumber" />
+            <Th label="Concurrent" sortKeyFor="displayName" />
+            {showPhone && <Th label="Téléphone" sortKeyFor="phone" />}
+            <Th label="Catégorie" sortKeyFor="category" />
             {showTimestamps && <th className="px-4 py-3 font-medium">Départ</th>}
             {showTimestamps && <th className="px-4 py-3 font-medium">Arrivée</th>}
-            <th className="px-4 py-3 font-medium">Temps</th>
-            <th className="px-4 py-3 font-medium">Statut</th>
+            <Th label="Temps" sortKeyFor="durationMs" />
+            <Th label="Statut" sortKeyFor="status" />
             {renderActions && <th className="px-4 py-3 font-medium">Actions</th>}
           </tr>
         </thead>
