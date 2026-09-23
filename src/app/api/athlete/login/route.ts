@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
-import { createAthleteSession } from "@/lib/session";
+import { createAthleteSession, clearParticipantSession } from "@/lib/session";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 
 const bodySchema = z.object({
@@ -33,9 +33,6 @@ export async function POST(request: NextRequest) {
   let firstName = parsed.data.firstName;
   let lastName = parsed.data.lastName;
 
-  // Si le prénom/nom n'est pas saisi ici, on va chercher s'il a déjà été
-  // renseigné lors de l'inscription à une course (formulaire de scan
-  // classique), pour éviter de le redemander inutilement.
   if (!firstName && !lastName) {
     const known = await prisma.participant.findFirst({
       where: {
@@ -49,6 +46,11 @@ export async function POST(request: NextRequest) {
       lastName = known.lastName ?? undefined;
     }
   }
+
+  // Se connecter à Mon Espace repart d'une identité propre : toute session
+  // "scan classique" laissée par une autre personne sur cet appareil est
+  // effacée, pour ne jamais mélanger les deux identités.
+  clearParticipantSession();
 
   await createAthleteSession({ phoneNormalized: normalized.value, firstName, lastName });
   return NextResponse.json({ ok: true });

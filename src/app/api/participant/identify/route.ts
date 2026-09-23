@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
-import { createParticipantSession } from "@/lib/session";
+import { createParticipantSession, clearAthleteSession } from "@/lib/session";
 import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 import { canRegisterForRace } from "@/lib/registration";
@@ -54,9 +54,6 @@ export async function POST(request: NextRequest) {
         phoneNormalized: normalized.value,
       },
     },
-    // Si le concurrent retape son prénom/nom lors d'un nouveau scan (ex.
-    // départ puis arrivée), on met à jour plutôt que d'écraser par du vide :
-    // seules les valeurs non vides envoyées remplacent les précédentes.
     update: {
       ...(firstName ? { firstName } : {}),
       ...(lastName ? { lastName } : {}),
@@ -69,14 +66,17 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // S'identifier via le scan classique repart aussi d'une identité propre :
+  // toute session Mon Espace laissée par une autre personne sur cet
+  // appareil est effacée, pour ne jamais mélanger les deux identités.
+  clearAthleteSession();
+
   await createParticipantSession({
     participantId: participant.id,
     raceId,
     phoneNormalized: normalized.value,
   });
 
-  // Si l'identification provient d'un scan QR en attente (concurrent pas
-  // encore identifié au moment du scan), on complète immédiatement ce scan.
   if (pendingCheckpoint && pendingToken) {
     const tokenField: "qrStartToken" | "qrFinishToken" =
       pendingCheckpoint === "start" ? "qrStartToken" : "qrFinishToken";

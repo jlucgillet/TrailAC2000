@@ -32,7 +32,15 @@ export function AthleteDashboard() {
 
   return (
     <div className="flex flex-col gap-10">
-      <NameHeader fullName={fullName} onUpdated={() => mutate()} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <NameHeader fullName={fullName} onUpdated={() => mutate()} />
+        <Link
+          href="/mon-espace/scanner"
+          className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+        >
+          Scanner
+        </Link>
+      </div>
 
       <section>
         <h1 className="mb-6 font-display text-3xl font-semibold">Mes courses</h1>
@@ -64,9 +72,9 @@ export function AthleteDashboard() {
                   {r.raceStatus === "active" && (
                     <Link
                       href={`/mon-espace/course/${r.raceId}`}
-                      className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+                      className="rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
                     >
-                      Scanner
+                      Scanner cette course
                     </Link>
                   )}
                   {r.attemptsCount > 0 && (
@@ -165,7 +173,7 @@ function NameHeader({
 
   if (fullName) {
     return (
-      <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3">
         <p className="font-display text-2xl font-semibold">Bonjour, {fullName}</p>
         <button onClick={() => setEditing(true)} className="text-sm text-muted underline">
           Modifier
