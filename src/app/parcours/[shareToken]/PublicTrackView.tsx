@@ -10,6 +10,7 @@ export function PublicTrackView({
   gpxData,
   shareToken,
   downloadPath,
+  label = "Parcours partagé — lecture seule",
 }: {
   name: string;
   distanceKm: number;
@@ -20,13 +21,16 @@ export function PublicTrackView({
    *  Les courses (qui ont leur propre GPX indépendant) passent leur propre
    *  route de téléchargement ici. */
   downloadPath?: string;
+  /** Texte affiché au-dessus du nom (distingue un parcours de bibliothèque
+   *  d'un parcours de course, ex. "Parcours chronométré"). */
+  label?: string;
 }) {
   const points = parseGpxPoints(gpxData);
   const resolvedDownloadPath = downloadPath ?? `/api/public/tracks/${shareToken}/download`;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
-      <p className="text-sm text-muted">Parcours partagé — lecture seule</p>
+      <p className="text-sm text-muted">{label}</p>
       <h1 className="mb-6 font-display text-3xl font-semibold">{name}</h1>
 
       <div className="mb-6 grid max-w-md grid-cols-2 gap-4">

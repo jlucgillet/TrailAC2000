@@ -20,6 +20,7 @@ export default async function PublicRaceTrackPage({
       gpxData={race.gpxData}
       shareToken={race.gpxShareToken}
       downloadPath={`/api/public/race-tracks/${race.gpxShareToken}/download`}
+      label="Parcours chronométré"
     />
   );
 }
