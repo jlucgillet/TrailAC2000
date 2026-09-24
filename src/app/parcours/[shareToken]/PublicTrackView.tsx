@@ -2,6 +2,7 @@
 
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { ResultsTable, type ResultRow } from "@/components/ResultsTable";
 
 export function PublicTrackView({
   name,
@@ -11,6 +12,7 @@ export function PublicTrackView({
   shareToken,
   downloadPath,
   label = "Parcours partagé — lecture seule",
+  results,
 }: {
   name: string;
   distanceKm: number;
@@ -24,6 +26,10 @@ export function PublicTrackView({
   /** Texte affiché au-dessus du nom (distingue un parcours de bibliothèque
    *  d'un parcours de course, ex. "Parcours chronométré"). */
   label?: string;
+  /** Classement des concurrents ayant terminé, trié par temps — uniquement
+   *  pertinent pour le GPX d'une course, jamais pour un parcours de
+   *  bibliothèque (qui n'a pas de résultats). */
+  results?: ResultRow[];
 }) {
   const points = parseGpxPoints(gpxData);
   const resolvedDownloadPath = downloadPath ?? `/api/public/tracks/${shareToken}/download`;
@@ -56,6 +62,13 @@ export function PublicTrackView({
       >
         Télécharger le fichier GPX
       </a>
+
+      {results && results.length > 0 && (
+        <div className="mt-10">
+          <h2 className="mb-4 font-display text-2xl font-semibold">Résultats</h2>
+          <ResultsTable rows={results} />
+        </div>
+      )}
     </div>
   );
 }
