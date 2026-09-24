@@ -19,10 +19,15 @@ export async function GET(
     distanceKm: track.distanceKm,
     elevationGainM: track.elevationGainM,
     gpxData: track.gpxData,
+    shareEnabled: track.shareEnabled,
+    shareToken: track.shareToken,
   });
 }
 
-const patchSchema = z.object({ name: z.string().min(1).max(200) });
+const patchSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  shareEnabled: z.boolean().optional(),
+});
 
 export async function PATCH(
   request: NextRequest,
@@ -36,15 +41,20 @@ export async function PATCH(
 
   const parsed = patchSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Nom invalide." }, { status: 400 });
+    return NextResponse.json({ error: "Données invalides." }, { status: 400 });
   }
 
   const updated = await prisma.track.update({
     where: { id: track.id },
-    data: { name: parsed.data.name },
+    data: parsed.data,
   });
 
-  return NextResponse.json({ id: updated.id, name: updated.name });
+  return NextResponse.json({
+    id: updated.id,
+    name: updated.name,
+    shareEnabled: updated.shareEnabled,
+    shareToken: updated.shareToken,
+  });
 }
 
 export async function DELETE(
