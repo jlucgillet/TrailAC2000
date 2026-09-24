@@ -85,6 +85,8 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
           </div>
 
           <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
+
+          <ShareSection raceId={raceId} data={data} onUpdated={() => mutate()} />
         </>
       ) : (
         <p className="max-w-md text-muted">
@@ -92,6 +94,95 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
           Connect, Komoot...) pour afficher le parcours sur une carte, la distance totale et le
           dénivelé positif.
         </p>
+      )}
+    </div>
+  );
+}
+
+function ShareSection({
+  raceId,
+  data,
+  onUpdated,
+}: {
+  raceId: string;
+  data: any;
+  onUpdated: () => void;
+}) {
+  const [toggling, setToggling] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl =
+    data?.gpxShareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/trace/${data.gpxShareToken}`
+      : "";
+
+  async function handleToggle(enabled: boolean) {
+    setToggling(true);
+    await fetch(`/api/admin/races/${raceId}/gpx`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gpxShareEnabled: enabled }),
+    });
+    setToggling(false);
+    onUpdated();
+  }
+
+  async function handleRegenerate() {
+    if (!confirm("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
+    setRegenerating(true);
+    await fetch(`/api/admin/races/${raceId}/gpx/regenerate-share`, { method: "POST" });
+    setRegenerating(false);
+    onUpdated();
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <h3 className="mb-3 font-display text-lg font-semibold">Partage</h3>
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={!!data?.gpxShareEnabled}
+          onChange={(e) => handleToggle(e.target.checked)}
+          disabled={toggling}
+          className="mt-1"
+        />
+        <span>
+          <span className="block">Partager ce parcours via un lien public</span>
+          <span className="block text-sm text-muted">
+            Toute personne disposant du lien peut consulter la carte, la distance et le dénivelé,
+            et télécharger le GPX — sans compte, en lecture seule (aucune modification possible).
+          </span>
+        </span>
+      </label>
+
+      {data?.gpxShareEnabled && (
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <input
+            readOnly
+            value={shareUrl}
+            className="min-w-[260px] flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-muted"
+          />
+          <button
+            onClick={handleCopy}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-ink"
+          >
+            {copied ? "Copié !" : "Copier"}
+          </button>
+          <button
+            onClick={handleRegenerate}
+            disabled={regenerating}
+            className="rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
+          >
+            {regenerating ? "…" : "Nouveau lien"}
+          </button>
+        </div>
       )}
     </div>
   );

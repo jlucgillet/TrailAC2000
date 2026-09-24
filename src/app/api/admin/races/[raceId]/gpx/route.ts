@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { parseGpxPoints, computeGpxStats } from "@/lib/gpx";
-
-async function ownedRace(raceId: string, adminId: string) {
-  return prisma.race.findFirst({ where: { id: raceId, adminId } });
-}
 
 export async function GET(
   _request: NextRequest,
@@ -14,13 +11,15 @@ export async function GET(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   return NextResponse.json({
     gpxData: race.gpxData,
     distanceKm: race.distanceKm,
     elevationGainM: race.elevationGainM,
+    gpxShareEnabled: race.gpxShareEnabled,
+    gpxShareToken: race.gpxShareToken,
   });
 }
 
@@ -31,7 +30,7 @@ export async function POST(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   const form = await request.formData();
@@ -71,6 +70,34 @@ export async function POST(
   });
 }
 
+const patchSchema = z.object({ gpxShareEnabled: z.boolean() });
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { raceId: string } }
+) {
+  const { session, response } = await requireAdmin();
+  if (!session) return response;
+
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
+  if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
+
+  const parsed = patchSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Données invalides." }, { status: 400 });
+  }
+
+  const updated = await prisma.race.update({
+    where: { id: race.id },
+    data: { gpxShareEnabled: parsed.data.gpxShareEnabled },
+  });
+
+  return NextResponse.json({
+    gpxShareEnabled: updated.gpxShareEnabled,
+    gpxShareToken: updated.gpxShareToken,
+  });
+}
+
 export async function DELETE(
   _request: NextRequest,
   { params }: { params: { raceId: string } }
@@ -78,12 +105,12 @@ export async function DELETE(
   const { session, response } = await requireAdmin();
   if (!session) return response;
 
-  const race = await ownedRace(params.raceId, session.adminId);
+  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race) return NextResponse.json({ error: "Course introuvable." }, { status: 404 });
 
   await prisma.race.update({
     where: { id: race.id },
-    data: { gpxData: null, elevationGainM: null },
+    data: { gpxData: null, elevationGainM: null, gpxShareEnabled: false },
   });
 
   return NextResponse.json({ ok: true });

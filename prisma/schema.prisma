@@ -72,6 +72,9 @@ model Race {
   qrStartToken  String @unique @default(uuid())
   qrFinishToken String @unique @default(uuid())
 
+  gpxShareToken   String  @unique @default(uuid())
+  gpxShareEnabled Boolean @default(false)
+
   publicResultsEnabled Boolean @default(true)
   openRegistration     Boolean @default(true)
 

@@ -9,14 +9,20 @@ export function PublicTrackView({
   elevationGainM,
   gpxData,
   shareToken,
+  downloadPath,
 }: {
   name: string;
   distanceKm: number;
   elevationGainM: number;
   gpxData: string;
   shareToken: string;
+  /** Par défaut, le téléchargement d'un Track (bibliothèque de parcours).
+   *  Les courses (qui ont leur propre GPX indépendant) passent leur propre
+   *  route de téléchargement ici. */
+  downloadPath?: string;
 }) {
   const points = parseGpxPoints(gpxData);
+  const resolvedDownloadPath = downloadPath ?? `/api/public/tracks/${shareToken}/download`;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10">
@@ -41,7 +47,7 @@ export function PublicTrackView({
       <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
 
       <a
-        href={`/api/public/tracks/${shareToken}/download`}
+        href={resolvedDownloadPath}
         className="mt-6 inline-block rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
       >
         Télécharger le fichier GPX
