@@ -46,6 +46,13 @@ export default function HomePage() {
               →
             </span>
           </Link>
+
+          <Link
+            href="/guide"
+            className="flex items-center justify-center gap-2 rounded-2xl border border-border px-6 py-3 text-sm text-muted transition-colors hover:border-muted hover:text-ink"
+          >
+            📖 Guides d&rsquo;utilisation
+          </Link>
         </div>
 
         <p className="mt-12 text-xs text-muted">

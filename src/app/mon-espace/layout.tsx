@@ -17,7 +17,12 @@ export default async function AthleteLayout({
             <Link href="/mon-espace" className="font-display text-xl font-semibold">
               Mon espace concurrent
             </Link>
-            <AthleteLogoutButton />
+            <div className="flex items-center gap-4 text-sm text-muted">
+              <Link href="/guide" className="underline hover:text-ink">
+                Guide
+              </Link>
+              <AthleteLogoutButton />
+            </div>
           </div>
         </header>
       )}
