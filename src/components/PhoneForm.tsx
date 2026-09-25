@@ -49,7 +49,7 @@ export function PhoneForm({
 
       router.push(`/course/${raceId}/run`);
     } catch {
-      setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+      setError("Connexion impossible. Vérifie ton réseau et réessaie.");
       setLoading(false);
     }
   }
@@ -64,7 +64,7 @@ export function PhoneForm({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <span className="text-sm text-muted">Votre numéro de téléphone</span>
+            <span className="text-sm text-muted">Ton numéro de téléphone</span>
             <input
               type="tel"
               inputMode="tel"
@@ -118,7 +118,7 @@ export function PhoneForm({
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Ensuite, scannez le QR code <strong className="text-ink">DÉPART</strong> pour lancer votre chronomètre.
+          Ensuite, scanne le QR code <strong className="text-ink">DÉPART</strong> pour lancer ton chronomètre.
         </p>
       </div>
     </div>

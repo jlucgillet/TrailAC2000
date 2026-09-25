@@ -2,9 +2,9 @@ const MESSAGES: Record<string, string> = {
   invalid: "Ce QR code n'est pas reconnu.",
   unknown_race: "Ce QR code correspond à une autre course, ou n'existe plus.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
-  rate_limited: "Trop de scans détectés depuis cet appareil. Patientez un instant et réessayez.",
+  rate_limited: "Trop de scans détectés depuis cet appareil. Patiente un instant et réessaie.",
   not_registered:
-    "Cette course est réservée aux concurrents déjà inscrits. Contactez l'organisateur pour vous inscrire.",
+    "Cette course est réservée aux concurrents déjà inscrits. Contacte l'organisateur pour t'inscrire.",
 };
 
 export default function ScanErrorPage({

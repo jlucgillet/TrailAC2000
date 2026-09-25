@@ -45,8 +45,9 @@ export default function ConcurrentGuidePage() {
             number={2}
             caption={
               <>
-                Le navigateur s&rsquo;ouvre automatiquement. Saisis <b className="text-ink">ton numéro
-                de téléphone</b> (nom facultatif), puis &laquo;&nbsp;Continuer&nbsp;&raquo;.
+                <b className="text-ink">La première fois seulement</b> : le navigateur s&rsquo;ouvre
+                automatiquement, saisis ton numéro (nom facultatif), puis « Continuer ». Aux scans
+                suivants, tu es reconnu automatiquement.
               </>
             }
           >
@@ -195,6 +196,23 @@ export default function ConcurrentGuidePage() {
       <section className="mt-16">
         <h2 className="mb-5 font-display text-2xl font-semibold">Bon à savoir</h2>
         <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-accent/40 bg-accent/5 p-5">
+            <p className="mb-1 font-medium">🔐 Connexion mémorisée</p>
+            <p className="text-sm text-muted">
+              Une fois identifié, tu n&rsquo;as <b className="text-ink">plus besoin de ressaisir ton
+              numéro</b> pour scanner à nouveau — la connexion reste active très longtemps, jusqu&rsquo;à
+              ce que tu te déconnectes toi-même.
+            </p>
+          </div>
+          <div className="rounded-xl border border-accent/40 bg-accent/5 p-5">
+            <p className="mb-1 font-medium">✈️ Tu peux fermer l&rsquo;app</p>
+            <p className="text-sm text-muted">
+              Après un scan, ton temps est déjà enregistré sur le serveur. Tu peux{" "}
+              <b className="text-ink">quitter l&rsquo;app, éteindre l&rsquo;écran, ou même éteindre ton
+              téléphone</b> — ça ne change rien au résultat, tant que tu l&rsquo;as rallumé avant le
+              prochain scan.
+            </p>
+          </div>
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="mb-1 font-medium">📷 Autoriser la caméra</p>
             <p className="text-sm text-muted">
@@ -206,14 +224,15 @@ export default function ConcurrentGuidePage() {
             <p className="mb-1 font-medium">📱 Téléphone partagé</p>
             <p className="text-sm text-muted">
               Si plusieurs personnes utilisent le même téléphone, clique sur &laquo;&nbsp;Ce n&rsquo;est
-              pas vous ? Changer de concurrent&nbsp;&raquo; avant le scan suivant.
+              pas toi ? Changer de concurrent&nbsp;&raquo; avant le scan suivant.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-5">
             <p className="mb-1 font-medium">🔌 Pas de réseau ?</p>
             <p className="text-sm text-muted">
-              Le temps officiel vient du serveur : une connexion internet est nécessaire au moment du
-              scan. Vérifie ton réseau si le scan ne répond pas.
+              Le temps officiel vient du serveur : une connexion internet est nécessaire{" "}
+              <b className="text-ink">au moment du scan</b>. Vérifie ton réseau si le scan ne répond
+              pas.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface p-5">

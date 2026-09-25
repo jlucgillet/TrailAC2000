@@ -91,9 +91,9 @@ export function Chrono({ raceId }: { raceId: string }) {
         {name && <p className="mb-2 text-lg font-medium text-ink">{name}</p>}
         <p className="mb-4 text-sm uppercase tracking-wide text-muted">Prêt·e ?</p>
         <h1 className="mb-6 font-display text-4xl font-semibold">
-          Scannez le QR code<br />DÉPART
+          Scanne le QR code<br />DÉPART
         </h1>
-        <p className="text-muted">Votre chronomètre démarrera automatiquement au scan.</p>
+        <p className="text-muted">Ton chronomètre démarrera automatiquement au scan.</p>
         {offline && <ConnectionWarning />}
         <BackToAthleteSpace />
         <SwitchCompetitor raceId={raceId} />
@@ -112,7 +112,7 @@ export function Chrono({ raceId }: { raceId: string }) {
           {formatDurationMs(displayMs)}
         </div>
         <p className="mt-8 max-w-xs text-muted">
-          À l&rsquo;arrivée, scannez le QR code <strong className="text-ink">ARRIVÉE</strong>.
+          À l&rsquo;arrivée, scanne le QR code <strong className="text-ink">ARRIVÉE</strong>.
         </p>
         {offline && <ConnectionWarning />}
         <BackToAthleteSpace />
@@ -137,7 +137,7 @@ export function Chrono({ raceId }: { raceId: string }) {
       <p className="mb-3 rounded-full bg-accent/15 px-4 py-1 text-sm font-medium text-accent">
         COURSE TERMINÉE
       </p>
-      <p className="mb-2 text-muted">Votre temps</p>
+      <p className="mb-2 text-muted">Ton temps</p>
       <div className="chrono-digits text-7xl font-semibold text-ink sm:text-8xl">
         {formatDurationMs(state.durationMs)}
       </div>
@@ -164,7 +164,7 @@ function SwitchCompetitor({ raceId }: { raceId: string }) {
       }}
       className="mt-2 text-sm text-muted underline"
     >
-      Ce n&rsquo;est pas vous ? Changer de concurrent
+      Ce n&rsquo;est pas toi ? Changer de concurrent
     </button>
   );
 }
@@ -172,7 +172,7 @@ function SwitchCompetitor({ raceId }: { raceId: string }) {
 function ConnectionWarning() {
   return (
     <p className="mt-6 rounded-lg bg-danger/10 px-4 py-2 text-sm text-danger">
-      Connexion instable — les données affichées peuvent être en retard. Ne fermez pas cette page.
+      Connexion instable — les données affichées peuvent être en retard. Ne ferme pas cette page.
     </p>
   );
 }

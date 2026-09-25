@@ -46,7 +46,7 @@ export function AthleteDashboard() {
         <h1 className="mb-6 font-display text-3xl font-semibold">Mes courses</h1>
         {myRaces.length === 0 ? (
           <p className="text-muted">
-            Vous n&rsquo;avez encore rejoint aucune course. Retrouvez les courses actives ci-dessous.
+            Tu n&rsquo;as encore rejoint aucune course. Retrouve les courses actives ci-dessous.
           </p>
         ) : (
           <div className="flex flex-col gap-3">

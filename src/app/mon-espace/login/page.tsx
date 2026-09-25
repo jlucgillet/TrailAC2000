@@ -35,7 +35,7 @@ export default function AthleteLoginPage() {
       router.push("/mon-espace");
       router.refresh();
     } catch {
-      setError("Connexion impossible. Vérifiez votre réseau et réessayez.");
+      setError("Connexion impossible. Vérifie ton réseau et réessaie.");
       setLoading(false);
     }
   }
@@ -50,7 +50,7 @@ export default function AthleteLoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-2">
-            <span className="text-sm text-muted">Votre numéro de téléphone</span>
+            <span className="text-sm text-muted">Ton numéro de téléphone</span>
             <input
               type="tel"
               inputMode="tel"
@@ -104,7 +104,7 @@ export default function AthleteLoginPage() {
         </form>
 
         <p className="mt-6 text-center text-sm text-muted">
-          Retrouvez l&rsquo;historique de vos courses, vos temps, et rejoignez une nouvelle course active.
+          Retrouve l&rsquo;historique de tes courses, tes temps, et rejoins une nouvelle course active.
         </p>
       </div>
     </div>

@@ -23,6 +23,6 @@ export async function canRegisterForRace(
   return {
     allowed: false,
     error:
-      "Cette course est réservée aux concurrents déjà inscrits. Contactez l'organisateur pour vous inscrire.",
+      "Cette course est réservée aux concurrents déjà inscrits. Contacte l'organisateur pour t'inscrire.",
   };
 }

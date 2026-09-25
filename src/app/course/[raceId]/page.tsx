@@ -19,7 +19,7 @@ export default async function CourseIdentifyPage({
       <div className="flex min-h-screen flex-col items-center justify-center px-6 text-center">
         <h1 className="mb-3 font-display text-3xl font-semibold">{race.name}</h1>
         <p className="text-muted">
-          Cette course n&rsquo;est pas encore ouverte au chronométrage. Revenez le jour de l&rsquo;épreuve.
+          Cette course n&rsquo;est pas encore ouverte au chronométrage. Reviens le jour de l&rsquo;épreuve.
         </p>
       </div>
     );

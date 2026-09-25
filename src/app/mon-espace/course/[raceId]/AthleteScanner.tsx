@@ -16,9 +16,9 @@ type ScanResult =
 
 const MESSAGES: Record<string, string> = {
   started: "Départ enregistré, bon courage !",
-  already_started: "Vous avez déjà commencé cette course.",
-  already_finished: "Votre course est déjà terminée.",
-  no_start: "Aucun départ enregistré pour cette course — scannez d'abord le QR code DÉPART.",
+  already_started: "Tu as déjà commencé cette course.",
+  already_finished: "Ta course est déjà terminée.",
+  no_start: "Aucun départ enregistré pour cette course — scanne d'abord le QR code DÉPART.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
 };
 
@@ -49,7 +49,7 @@ export function AthleteScanner({
   }
 
   async function handleDecoded(decodedText: string) {
-    if (loading || result) return; // évite les scans multiples pendant le traitement
+    if (loading || result) return;
     setLoading(true);
     try {
       const res = await fetch("/api/athlete/scan", {
@@ -64,7 +64,7 @@ export function AthleteScanner({
         setResult(data.outcome);
       }
     } catch {
-      setResult({ kind: "error", message: "Connexion impossible. Réessayez." });
+      setResult({ kind: "error", message: "Connexion impossible. Réessaie." });
     } finally {
       setLoading(false);
     }
@@ -74,7 +74,7 @@ export function AthleteScanner({
     <div className="flex flex-col items-center gap-6 py-4 text-center">
       <div>
         <p className="text-sm text-muted">Scanner — {raceName}</p>
-        <h1 className="font-display text-2xl font-semibold">Visez un QR code DÉPART ou ARRIVÉE</h1>
+        <h1 className="font-display text-2xl font-semibold">Vise un QR code DÉPART ou ARRIVÉE</h1>
       </div>
 
       <QrScanner paused={loading || result !== null} onDecoded={handleDecoded} />

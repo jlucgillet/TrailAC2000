@@ -16,9 +16,9 @@ type ScanResult =
 
 const MESSAGES: Record<string, string> = {
   started: "Départ enregistré, bon courage !",
-  already_started: "Vous avez déjà commencé cette course.",
-  already_finished: "Votre course est déjà terminée.",
-  no_start: "Aucun départ enregistré pour cette course — scannez d'abord le QR code DÉPART.",
+  already_started: "Tu as déjà commencé cette course.",
+  already_finished: "Ta course est déjà terminée.",
+  no_start: "Aucun départ enregistré pour cette course — scanne d'abord le QR code DÉPART.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
 };
 
