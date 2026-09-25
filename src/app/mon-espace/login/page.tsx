@@ -99,7 +99,7 @@ export default function AthleteLoginPage() {
             disabled={loading || phone.trim().length < 6}
             className="mt-2 rounded-xl bg-accent px-6 py-4 text-lg font-semibold text-bg disabled:opacity-50"
           >
-            {loading ? "Connexion…" : "Accéder à mes courses"}
+            {loading ? "Connexion…" : "Me connecter"}
           </button>
         </form>
 

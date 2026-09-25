@@ -128,7 +128,7 @@ export default function ConcurrentGuidePage() {
               06 12 34 56 78
             </div>
             <div className="mt-auto rounded-lg bg-accent px-2 py-2 text-center text-[10px] font-bold text-bg">
-              Accéder à mes courses
+              Me connecter
             </div>
           </GuideStep>
 
