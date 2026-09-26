@@ -53,7 +53,7 @@ export function AthleteDashboard() {
             {myRaces.map((r: any) => (
               <div
                 key={r.raceId}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border-2 border-accent/30 bg-surface p-4"
               >
                 <div>
                   <p className="font-medium">{r.raceName}</p>
@@ -203,7 +203,7 @@ function JoinableRaceRow({
   onJoined: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-border bg-surface p-4">
+    <div className="flex items-center justify-between rounded-xl border-2 border-accent/30 bg-surface p-4">
       <div>
         <p className="font-medium">{race.name}</p>
         <p className="text-sm text-muted">
