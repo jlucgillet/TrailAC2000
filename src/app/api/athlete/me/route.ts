@@ -27,19 +27,35 @@ export async function GET() {
   const myParticipations = await prisma.participant.findMany({
     where: {
       phoneNormalized: session.phoneNormalized,
-      race: { status: { not: "draft" } },
+      // Ni brouillon (jamais ouverte), ni archivée (retirée par
+      // l'organisateur) : les deux doivent disparaître de "Mes courses",
+      // pas seulement des brouillons.
+      race: { status: { notIn: ["draft", "archived"] } },
     },
     include: {
       race: true,
       // Tous les essais : une course est un segment que l'on peut courir
       // librement plusieurs fois tant qu'elle est active, pour mesurer sa
-      // progression. On calcule ici le meilleur temps et le nombre d'essais ;
-      // le détail de chaque essai est consultable via /api/athlete/races/[raceId]/results.
+      // progression.
       runs: true,
     },
   });
 
-  const myRaces = myParticipations.map((p) => {
+  type RaceHistoryEntry = {
+    raceId: string;
+    raceName: string;
+    raceDate: Date;
+    raceStartTime: Date | null;
+    raceStatus: string;
+    category: string | null;
+    bibNumber: string | null;
+    attemptsCount: number;
+    bestDurationMs: number | null;
+    lastRunStatus: string;
+    sortTime: number;
+  };
+
+  const myRaces: RaceHistoryEntry[] = myParticipations.map((p) => {
     const finishedRuns = p.runs.filter((r) => r.status === "finished" && r.durationMs !== null);
     const bestDurationMs =
       finishedRuns.length > 0
@@ -49,9 +65,6 @@ export async function GET() {
     const runningRun = p.runs.find((r) => r.status === "running");
     const lastRunStatus = runningRun ? "running" : finishedRuns.length > 0 ? "finished" : "registered";
 
-    // Date/heure du dernier événement réel (dernière arrivée, ou départ en
-    // cours), pour trier la liste par activité récente plutôt que par date
-    // programmée de la course.
     const latestActivity = p.runs.reduce<Date | null>((latest, r) => {
       const t = r.finishTimestamp ?? r.startTimestamp;
       if (!t) return latest;
