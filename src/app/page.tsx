@@ -14,7 +14,7 @@ export default function HomePage() {
 
         <div className="flex flex-col gap-4">
           <Link
-            href="/mon-espace/login"
+            href="/mon-espace"
             className="group flex items-center justify-between rounded-2xl border border-accent bg-accent/10 px-6 py-5 text-left transition-colors hover:bg-accent/15"
           >
             <span>
