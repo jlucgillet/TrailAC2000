@@ -11,6 +11,32 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
   const { data, isLoading, mutate } = useSWR(`/api/admin/races/${raceId}/gpx`, fetcher);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingStats, setEditingStats] = useState(false);
+  const [distanceInput, setDistanceInput] = useState("");
+  const [elevationInput, setElevationInput] = useState("");
+  const [savingStats, setSavingStats] = useState(false);
+
+  function openStatsEdit() {
+    setDistanceInput(data?.distanceKm != null ? String(data.distanceKm) : "");
+    setElevationInput(data?.elevationGainM != null ? String(data.elevationGainM) : "");
+    setEditingStats(true);
+  }
+
+  async function handleSaveStats(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingStats(true);
+    await fetch(`/api/admin/races/${raceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        distanceKm: distanceInput ? Number(distanceInput) : null,
+        elevationGainM: elevationInput ? Number(elevationInput) : null,
+      }),
+    });
+    setSavingStats(false);
+    setEditingStats(false);
+    mutate();
+  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -67,33 +93,86 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      {data?.gpxData ? (
-        <>
-          <div className="grid max-w-md grid-cols-2 gap-4">
+      {!data?.gpxData && (
+        <p className="max-w-md text-muted">
+          Aucun tracé importé. Importe un fichier <code>.gpx</code> (export Strava, Garmin
+          Connect, Komoot...) pour afficher le parcours sur une carte — ou renseigne la distance
+          et le dénivelé manuellement ci-dessous.
+        </p>
+      )}
+
+      {editingStats ? (
+        <form
+          onSubmit={handleSaveStats}
+          className="grid max-w-md gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2"
+        >
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-muted">Distance (km)</span>
+            <input
+              type="number"
+              step="0.1"
+              value={distanceInput}
+              onChange={(e) => setDistanceInput(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm text-muted">Dénivelé positif (m)</span>
+            <input
+              type="number"
+              step="1"
+              value={elevationInput}
+              onChange={(e) => setElevationInput(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2"
+            />
+          </label>
+          <div className="flex gap-2 sm:col-span-2">
+            <button
+              type="submit"
+              disabled={savingStats}
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
+            >
+              {savingStats ? "…" : "Enregistrer"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditingStats(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-muted"
+            >
+              Annuler
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="flex max-w-md flex-wrap items-center gap-4">
+          <div className="grid flex-1 grid-cols-2 gap-4">
             <div className="rounded-xl border border-border bg-surface p-5">
               <p className="text-sm text-muted">Distance</p>
               <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-                {data.distanceKm?.toFixed(1)} km
+                {data?.distanceKm != null ? `${data.distanceKm.toFixed(1)} km` : "—"}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-surface p-5">
               <p className="text-sm text-muted">Dénivelé positif</p>
               <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-                {Math.round(data.elevationGainM ?? 0)} m
+                {data?.elevationGainM != null ? `${Math.round(data.elevationGainM)} m` : "—"}
               </p>
             </div>
           </div>
+          <button
+            onClick={openStatsEdit}
+            className="rounded-lg border border-border px-3 py-2 text-xs text-muted hover:text-ink"
+          >
+            Modifier
+          </button>
+        </div>
+      )}
 
+      {data?.gpxData && (
+        <>
           <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
-
           <ShareSection raceId={raceId} data={data} onUpdated={() => mutate()} />
         </>
-      ) : (
-        <p className="max-w-md text-muted">
-          Aucun tracé importé. Importez un fichier <code>.gpx</code> (export Strava, Garmin
-          Connect, Komoot...) pour afficher le parcours sur une carte, la distance totale et le
-          dénivelé positif.
-        </p>
       )}
     </div>
   );
