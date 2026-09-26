@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Race = {
   id: string;
@@ -25,6 +26,7 @@ export function SettingsTab({
   race: Race;
   onUpdate: (patch: Partial<Race>) => void;
 }) {
+  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +34,10 @@ export function SettingsTab({
   const [date, setDate] = useState(race.date.slice(0, 10));
   const [location, setLocation] = useState(race.location ?? "");
   const [infoSaved, setInfoSaved] = useState(false);
+
+  const [confirmName, setConfirmName] = useState("");
+  const [purging, setPurging] = useState(false);
+  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   async function updateField(patch: Partial<Race>) {
     setSaving(true);
@@ -53,12 +59,27 @@ export function SettingsTab({
   async function handleSaveInfo(e: React.FormEvent) {
     e.preventDefault();
     setInfoSaved(false);
-    await updateField({
-      name,
-      date: new Date(date).toISOString(),
-      location,
-    });
+    await updateField({ name, date: new Date(date).toISOString(), location });
     setInfoSaved(true);
+  }
+
+  async function handleArchive() {
+    if (!confirm("Archiver cette course ?")) return;
+    await fetch(`/api/admin/races/${race.id}`, { method: "DELETE" });
+    window.location.href = "/admin/dashboard";
+  }
+
+  async function handlePurge() {
+    setPurging(true);
+    setPurgeError(null);
+    const res = await fetch(`/api/admin/races/${race.id}/purge`, { method: "DELETE" });
+    const data = await res.json();
+    setPurging(false);
+    if (!res.ok) {
+      setPurgeError(data.error ?? "Erreur lors de la suppression.");
+      return;
+    }
+    router.push("/admin/dashboard");
   }
 
   return (
@@ -175,20 +196,46 @@ export function SettingsTab({
 
       <section className="rounded-xl border border-danger/40 p-4">
         <h3 className="mb-2 font-display text-xl font-semibold text-danger">Zone sensible</h3>
-        <p className="mb-3 text-sm text-muted">
-          Archiver la course la retire des listes actives. Les données sont conservées (traçabilité),
-          rien n&rsquo;est supprimé définitivement depuis cette interface.
-        </p>
-        <button
-          onClick={async () => {
-            if (!confirm("Archiver cette course ?")) return;
-            await fetch(`/api/admin/races/${race.id}`, { method: "DELETE" });
-            window.location.href = "/admin/dashboard";
-          }}
-          className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
-        >
-          Archiver la course
-        </button>
+
+        <div className="mb-5">
+          <p className="mb-3 text-sm text-muted">
+            Archiver la course la retire des listes actives. Les données sont conservées
+            (traçabilité), rien n&rsquo;est supprimé définitivement depuis cette action.
+          </p>
+          <button
+            onClick={handleArchive}
+            className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
+          >
+            Archiver la course
+          </button>
+        </div>
+
+        {race.status === "closed" && (
+          <div className="border-t border-danger/30 pt-5">
+            <p className="mb-1 font-medium text-danger">Suppression définitive</p>
+            <p className="mb-3 text-sm text-muted">
+              Supprime la course, ses concurrents et tous ses résultats <b className="text-ink">de
+              façon irréversible</b>. Réservé aux courses clôturées. Pour confirmer, retape le nom
+              exact de la course ci-dessous.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                placeholder={race.name}
+                className="rounded-lg border border-danger/50 bg-surface px-3 py-2 text-sm"
+              />
+              <button
+                onClick={handlePurge}
+                disabled={confirmName !== race.name || purging}
+                className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                {purging ? "Suppression…" : "Supprimer définitivement"}
+              </button>
+            </div>
+            {purgeError && <p className="mt-2 text-sm text-danger">{purgeError}</p>}
+          </div>
+        )}
       </section>
     </div>
   );
