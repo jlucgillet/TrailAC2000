@@ -22,6 +22,8 @@ export async function GET(
     return {
       participantId: p.id,
       displayName: [p.firstName, p.lastName].filter(Boolean).join(" ") || "—",
+      firstName: p.firstName,
+      lastName: p.lastName,
       phone: p.phoneNormalized,
       bibNumber: p.bibNumber,
       category: p.category,

@@ -33,6 +33,7 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
   const [importing, setImporting] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("bibNumber");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -123,27 +124,49 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
       <AddParticipantForm raceId={raceId} onAdded={() => mutate()} />
 
       <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full min-w-[560px] text-left text-sm">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-surface text-muted">
             <tr>
               <SortHeader label="Dossard" sortKeyFor="bibNumber" />
               <SortHeader label="Nom" sortKeyFor="name" />
               <SortHeader label="Catégorie" sortKeyFor="category" />
               <SortHeader label="Téléphone" sortKeyFor="phoneNormalized" />
+              <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {sorted.map((p) => (
-              <tr key={p.id}>
-                <td className="px-4 py-3 tabular-nums">{p.bibNumber ?? "—"}</td>
-                <td className="px-4 py-3">{[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}</td>
-                <td className="px-4 py-3 text-muted">{p.category ?? "—"}</td>
-                <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
-              </tr>
-            ))}
+            {sorted.map((p) =>
+              editingId === p.id ? (
+                <EditParticipantRow
+                  key={p.id}
+                  raceId={raceId}
+                  participant={p}
+                  onCancel={() => setEditingId(null)}
+                  onSaved={() => {
+                    setEditingId(null);
+                    mutate();
+                  }}
+                />
+              ) : (
+                <tr key={p.id}>
+                  <td className="px-4 py-3 tabular-nums">{p.bibNumber ?? "—"}</td>
+                  <td className="px-4 py-3">{[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="px-4 py-3 text-muted">{p.category ?? "—"}</td>
+                  <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setEditingId(p.id)}
+                      className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
+                    >
+                      Modifier
+                    </button>
+                  </td>
+                </tr>
+              )
+            )}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted">
                   Aucun concurrent pour le moment.
                 </td>
               </tr>
@@ -152,6 +175,110 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
         </table>
       </div>
     </div>
+  );
+}
+
+function EditParticipantRow({
+  raceId,
+  participant,
+  onCancel,
+  onSaved,
+}: {
+  raceId: string;
+  participant: Participant;
+  onCancel: () => void;
+  onSaved: () => void;
+}) {
+  const [firstName, setFirstName] = useState(participant.firstName ?? "");
+  const [lastName, setLastName] = useState(participant.lastName ?? "");
+  const [bibNumber, setBibNumber] = useState(participant.bibNumber ?? "");
+  const [category, setCategory] = useState(participant.category ?? "");
+  const [phone, setPhone] = useState(participant.phoneNormalized);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/races/${raceId}/participants/${participant.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ firstName, lastName, bibNumber, category, phone }),
+    });
+    const result = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setError(result.error ?? "Erreur lors de l'enregistrement.");
+      return;
+    }
+    onSaved();
+  }
+
+  return (
+    <tr>
+      <td colSpan={4} className="px-4 py-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Dossard</span>
+            <input
+              value={bibNumber}
+              onChange={(e) => setBibNumber(e.target.value)}
+              className="w-24 rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Prénom</span>
+            <input
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Nom</span>
+            <input
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Catégorie</span>
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">Téléphone</span>
+            <input
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+            />
+          </label>
+        </div>
+        {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      </td>
+      <td className="px-4 py-4 align-bottom">
+        <div className="flex gap-2">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-bg disabled:opacity-50"
+          >
+            {saving ? "…" : "Enregistrer"}
+          </button>
+          <button
+            onClick={onCancel}
+            className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted"
+          >
+            Annuler
+          </button>
+        </div>
+      </td>
+    </tr>
   );
 }
 

@@ -130,6 +130,8 @@ export function ResultsTab({ raceId }: { raceId: string }) {
           raceId={raceId}
           participantId={editingRaw.participantId}
           displayName={editingRaw.displayName}
+          firstName={editingRaw.firstName}
+          lastName={editingRaw.lastName}
           startTimestamp={editingRaw.startTimestamp}
           finishTimestamp={editingRaw.finishTimestamp}
           status={editingRaw.status}

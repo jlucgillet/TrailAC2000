@@ -15,6 +15,8 @@ export function EditRunModal({
   raceId,
   participantId,
   displayName,
+  firstName,
+  lastName,
   startTimestamp,
   finishTimestamp,
   status,
@@ -24,6 +26,8 @@ export function EditRunModal({
   raceId: string;
   participantId: string;
   displayName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   startTimestamp: string | null;
   finishTimestamp: string | null;
   status: string;
@@ -32,6 +36,8 @@ export function EditRunModal({
 }) {
   const [start, setStart] = useState(toLocalInputValue(startTimestamp));
   const [finish, setFinish] = useState(toLocalInputValue(finishTimestamp));
+  const [editFirstName, setEditFirstName] = useState(firstName ?? "");
+  const [editLastName, setEditLastName] = useState(lastName ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,23 +80,38 @@ export function EditRunModal({
     e.preventDefault();
     setSaving(true);
     setError(null);
-    const res = await fetch(
-      `/api/admin/races/${raceId}/participants/${participantId}/run`,
-      {
+
+    // Nom/prénom et horaires sont deux ressources distinctes côté API :
+    // on enregistre les deux si besoin, dans le même clic "Enregistrer".
+    const [nameRes, runRes] = await Promise.all([
+      fetch(`/api/admin/races/${raceId}/participants/${participantId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: editFirstName, lastName: editLastName }),
+      }),
+      fetch(`/api/admin/races/${raceId}/participants/${participantId}/run`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           startTimestamp: start ? new Date(start).toISOString() : null,
           finishTimestamp: finish ? new Date(finish).toISOString() : null,
         }),
-      }
-    );
-    const data = await res.json();
+      }),
+    ]);
+
     setSaving(false);
-    if (!res.ok) {
-      setError(data.error ?? "Erreur.");
+
+    if (!nameRes.ok) {
+      const data = await nameRes.json().catch(() => ({}));
+      setError(data.error ?? "Erreur lors de l'enregistrement du nom.");
       return;
     }
+    if (!runRes.ok) {
+      const data = await runRes.json().catch(() => ({}));
+      setError(data.error ?? "Erreur lors de l'enregistrement des horaires.");
+      return;
+    }
+
     onSaved();
     onClose();
   }
@@ -98,7 +119,7 @@ export function EditRunModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
       <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-6">
-        <h3 className="mb-1 font-display text-xl font-semibold">Modifier le chronométrage</h3>
+        <h3 className="mb-1 font-display text-xl font-semibold">Modifier le concurrent</h3>
         <p className="mb-4 text-sm text-muted">{displayName}</p>
 
         {status === "running" && (
@@ -112,6 +133,25 @@ export function EditRunModal({
         )}
 
         <form onSubmit={handleSave} className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-muted">Prénom</span>
+              <input
+                value={editFirstName}
+                onChange={(e) => setEditFirstName(e.target.value)}
+                className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-muted">Nom</span>
+              <input
+                value={editLastName}
+                onChange={(e) => setEditLastName(e.target.value)}
+                className="rounded-lg border border-border bg-bg px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+
           <label className="flex flex-col gap-1">
             <span className="text-sm text-muted">Heure de départ</span>
             <input
