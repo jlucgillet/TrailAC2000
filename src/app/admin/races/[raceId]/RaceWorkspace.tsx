@@ -15,6 +15,7 @@ type Race = {
   date: string;
   location: string | null;
   distanceKm: number | null;
+  elevationGainM: number | null;
   publicResultsEnabled: boolean;
   openRegistration: boolean;
 };
@@ -71,7 +72,14 @@ export function RaceWorkspace({ race: initialRace }: { race: Race }) {
       </nav>
 
       {tab === "dashboard" && <DashboardTab raceId={race.id} />}
-      {tab === "qrcodes" && <QrCodesTab raceId={race.id} raceName={race.name} />}
+      {tab === "qrcodes" && (
+        <QrCodesTab
+          raceId={race.id}
+          raceName={race.name}
+          distanceKm={race.distanceKm}
+          elevationGainM={race.elevationGainM}
+        />
+      )}
       {tab === "parcours" && <ParcoursTab raceId={race.id} />}
       {tab === "participants" && <ParticipantsTab raceId={race.id} />}
       {tab === "results" && <ResultsTab raceId={race.id} />}
