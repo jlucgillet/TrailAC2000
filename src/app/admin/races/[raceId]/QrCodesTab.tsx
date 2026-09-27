@@ -204,9 +204,12 @@ async function generatePrintPoster({
 }
 
 /**
- * Compose une seule affiche A4 avec les DEUX QR codes (départ + arrivée),
- * la distance/le dénivelé, et une phrase d'explication — pratique pour
- * n'imprimer qu'une seule feuille recto au lieu de deux.
+ * Compose une seule affiche A4 avec les DEUX QR codes (départ + arrivée).
+ * Les deux sections sont symétriques (titre de la course, mention
+ * "TRAIL AC 2000 — Merci de laisser en place", puis le QR code) ; seule la
+ * section DÉPART ajoute la distance, le dénivelé et la phrase d'explication.
+ * Pas de cadre englobant : chaque section peut être découpée séparément
+ * si besoin (une affiche par point de contrôle).
  */
 async function generateCombinedPoster({
   startPng,
@@ -231,94 +234,123 @@ async function generateCombinedPoster({
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
-  const ink = "#0B1410";
-  const muted = "#4B5A52";
-  const startColor = "#5A9A2E";
-  const finishColor = "#C23B3B";
-
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, width, height);
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = 6;
-  ctx.strokeRect(30, 30, width - 60, height - 60);
-
   ctx.textAlign = "center";
 
-  let y = 120;
+  const qrSize = 360;
+  const centerX = width / 2;
 
-  // Nom de la course
-  ctx.fillStyle = ink;
-  ctx.font = "bold 52px system-ui, sans-serif";
-  y = wrapCenteredText(ctx, raceName, width / 2, y, width - 200, 58);
-
-  // Distance / dénivelé
-  const details: string[] = [];
-  if (distanceKm != null) details.push(`${distanceKm.toFixed(1)} km`);
-  if (elevationGainM != null) details.push(`D+ ${Math.round(elevationGainM)} m`);
-  if (details.length > 0) {
-    y += 16;
-    ctx.fillStyle = muted;
-    ctx.font = "34px system-ui, sans-serif";
-    ctx.fillText(details.join("   ·   "), width / 2, y);
-    y += 50;
-  } else {
-    y += 30;
-  }
-
-  const qrSize = 380;
-  const qrX = (width - qrSize) / 2;
-
-  // Bloc DÉPART
-  y += 40;
-  ctx.fillStyle = startColor;
-  ctx.font = "bold 64px system-ui, sans-serif";
-  ctx.fillText("DÉPART", width / 2, y);
-  y += 30;
-  ctx.drawImage(startImg, qrX, y, qrSize, qrSize);
-  y += qrSize + 40;
-
-  ctx.fillStyle = ink;
-  ctx.font = "italic 30px system-ui, sans-serif";
-  y = wrapCenteredText(
-    ctx,
-    "Parcours chronométré : tu scans au départ et tu scans à l'arrivée.",
-    width / 2,
+  let y = 80;
+  y = drawCheckpointSection(ctx, {
+    centerX,
     y,
-    width - 260,
-    38
-  );
+    contentWidth: width - 200,
+    raceName,
+    checkpointLabel: "DÉPART",
+    checkpointColor: "#5A9A2E",
+    qrImg: startImg,
+    qrSize,
+    distanceKm,
+    elevationGainM,
+    phrase: "Parcours chronométré : tu scans au départ et tu scans à l'arrivée.",
+  });
 
-  // Séparateur
-  y += 40;
+  // Séparateur entre les deux sections
+  y += 30;
   ctx.strokeStyle = "#DDE3DA";
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(140, y);
   ctx.lineTo(width - 140, y);
   ctx.stroke();
-  y += 60;
+  y += 50;
 
-  // Bloc ARRIVÉE
-  ctx.fillStyle = finishColor;
-  ctx.font = "bold 64px system-ui, sans-serif";
-  ctx.fillText("ARRIVÉE", width / 2, y);
-  y += 30;
-  ctx.drawImage(finishImg, qrX, y, qrSize, qrSize);
-  y += qrSize + 70;
-
-  // Pied de page
-  ctx.fillStyle = ink;
-  ctx.font = "bold 40px system-ui, sans-serif";
-  ctx.fillText("TRAIL AC 2000", width / 2, y);
-  ctx.fillStyle = muted;
-  ctx.font = "28px system-ui, sans-serif";
-  ctx.fillText("Merci de laisser en place", width / 2, y + 44);
+  drawCheckpointSection(ctx, {
+    centerX,
+    y,
+    contentWidth: width - 200,
+    raceName,
+    checkpointLabel: "ARRIVÉE",
+    checkpointColor: "#C23B3B",
+    qrImg: finishImg,
+    qrSize,
+  });
 
   const dataUrl = canvas.toDataURL("image/png");
   const a = document.createElement("a");
   a.href = dataUrl;
   a.download = `affiche-depart-arrivee-${slugify(raceName)}.png`;
   a.click();
+}
+
+/** Dessine une section complète (titre + marque + QR, +extras optionnels pour le départ). Retourne le y final. */
+function drawCheckpointSection(
+  ctx: CanvasRenderingContext2D,
+  opts: {
+    centerX: number;
+    y: number;
+    contentWidth: number;
+    raceName: string;
+    checkpointLabel: string;
+    checkpointColor: string;
+    qrImg: HTMLImageElement;
+    qrSize: number;
+    distanceKm?: number | null;
+    elevationGainM?: number | null;
+    phrase?: string;
+  }
+): number {
+  const { centerX, contentWidth, raceName, checkpointLabel, checkpointColor, qrImg, qrSize, distanceKm, elevationGainM, phrase } = opts;
+  const ink = "#0B1410";
+  const muted = "#4B5A52";
+  let y = opts.y;
+
+  // Titre de la course
+  ctx.fillStyle = ink;
+  ctx.font = "bold 48px system-ui, sans-serif";
+  y = wrapCenteredText(ctx, raceName, centerX, y + 48, contentWidth, 54);
+
+  // Marque + rappel
+  y += 18;
+  ctx.font = "bold 36px system-ui, sans-serif";
+  ctx.fillText("TRAIL AC 2000", centerX, y);
+  y += 38;
+  ctx.fillStyle = muted;
+  ctx.font = "26px system-ui, sans-serif";
+  ctx.fillText("Merci de laisser en place", centerX, y);
+  y += 34;
+
+  // Distance / dénivelé (départ uniquement)
+  const details: string[] = [];
+  if (distanceKm != null) details.push(`${distanceKm.toFixed(1)} km`);
+  if (elevationGainM != null) details.push(`D+ ${Math.round(elevationGainM)} m`);
+  if (details.length > 0) {
+    y += 16;
+    ctx.font = "32px system-ui, sans-serif";
+    ctx.fillText(details.join("   ·   "), centerX, y);
+    y += 30;
+  }
+
+  // Point de contrôle
+  y += 30;
+  ctx.fillStyle = checkpointColor;
+  ctx.font = "bold 60px system-ui, sans-serif";
+  ctx.fillText(checkpointLabel, centerX, y);
+  y += 30;
+
+  // QR code
+  ctx.drawImage(qrImg, centerX - qrSize / 2, y, qrSize, qrSize);
+  y += qrSize + 36;
+
+  // Phrase d'explication (départ uniquement)
+  if (phrase) {
+    ctx.fillStyle = ink;
+    ctx.font = "italic 27px system-ui, sans-serif";
+    y = wrapCenteredText(ctx, phrase, centerX, y, contentWidth - 60, 34);
+  }
+
+  return y;
 }
 
 /** Retourne la position Y juste après le texte (pour enchaîner d'autres éléments). */
