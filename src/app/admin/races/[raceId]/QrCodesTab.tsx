@@ -253,7 +253,6 @@ async function generateCombinedPoster({
     qrSize,
     distanceKm,
     elevationGainM,
-    phrase: "Parcours chronométré : tu scans au départ et tu scans à l'arrivée.",
   });
 
   // Séparateur entre les deux sections
@@ -284,7 +283,7 @@ async function generateCombinedPoster({
   a.click();
 }
 
-/** Dessine une section complète (titre + marque + QR, +extras optionnels pour le départ). Retourne le y final. */
+/** Dessine une section complète (titre + marque + QR, +distance/dénivelé pour le départ). Retourne le y final. */
 function drawCheckpointSection(
   ctx: CanvasRenderingContext2D,
   opts: {
@@ -298,12 +297,10 @@ function drawCheckpointSection(
     qrSize: number;
     distanceKm?: number | null;
     elevationGainM?: number | null;
-    phrase?: string;
   }
 ): number {
-  const { centerX, contentWidth, raceName, checkpointLabel, checkpointColor, qrImg, qrSize, distanceKm, elevationGainM, phrase } = opts;
+  const { centerX, contentWidth, raceName, checkpointLabel, checkpointColor, qrImg, qrSize, distanceKm, elevationGainM } = opts;
   const ink = "#0B1410";
-  const muted = "#4B5A52";
   let y = opts.y;
 
   // Titre de la course
@@ -311,29 +308,29 @@ function drawCheckpointSection(
   ctx.font = "bold 48px system-ui, sans-serif";
   y = wrapCenteredText(ctx, raceName, centerX, y + 48, contentWidth, 54);
 
-  // Marque + rappel
-  y += 18;
+  // "Parcours chronométré" au-dessus de la marque
+  y += 22;
+  ctx.font = "600 28px system-ui, sans-serif";
+  ctx.fillText("Parcours chronométré", centerX, y);
+
+  // Marque
+  y += 40;
   ctx.font = "bold 36px system-ui, sans-serif";
   ctx.fillText("TRAIL AC 2000", centerX, y);
-  y += 38;
-  ctx.fillStyle = muted;
-  ctx.font = "26px system-ui, sans-serif";
-  ctx.fillText("Merci de laisser en place", centerX, y);
-  y += 34;
+  y += 20;
 
   // Distance / dénivelé (départ uniquement)
   const details: string[] = [];
   if (distanceKm != null) details.push(`${distanceKm.toFixed(1)} km`);
   if (elevationGainM != null) details.push(`D+ ${Math.round(elevationGainM)} m`);
   if (details.length > 0) {
-    y += 16;
+    y += 26;
     ctx.font = "32px system-ui, sans-serif";
     ctx.fillText(details.join("   ·   "), centerX, y);
-    y += 30;
   }
 
   // Point de contrôle
-  y += 30;
+  y += 46;
   ctx.fillStyle = checkpointColor;
   ctx.font = "bold 60px system-ui, sans-serif";
   ctx.fillText(checkpointLabel, centerX, y);
@@ -341,14 +338,12 @@ function drawCheckpointSection(
 
   // QR code
   ctx.drawImage(qrImg, centerX - qrSize / 2, y, qrSize, qrSize);
-  y += qrSize + 36;
+  y += qrSize + 44;
 
-  // Phrase d'explication (départ uniquement)
-  if (phrase) {
-    ctx.fillStyle = ink;
-    ctx.font = "italic 27px system-ui, sans-serif";
-    y = wrapCenteredText(ctx, phrase, centerX, y, contentWidth - 60, 34);
-  }
+  // "Merci de laisser en place", en gras, sous le QR code
+  ctx.fillStyle = ink;
+  ctx.font = "bold 30px system-ui, sans-serif";
+  ctx.fillText("Merci de laisser en place", centerX, y);
 
   return y;
 }
