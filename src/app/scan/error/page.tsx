@@ -5,6 +5,8 @@ const MESSAGES: Record<string, string> = {
   rate_limited: "Trop de scans détectés depuis cet appareil. Patiente un instant et réessaie.",
   not_registered:
     "Cette course est réservée aux concurrents déjà inscrits. Contacte l'organisateur pour t'inscrire.",
+  name_required:
+    "Renseigne ton prénom et ton nom dans Mon Espace (bouton « + Ajouter mon prénom et nom »), puis scanne à nouveau.",
 };
 
 export default function ScanErrorPage({

@@ -72,12 +72,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
+  const existingParticipant = await prisma.participant.findUnique({
+    where: { raceId_phoneNormalized: { raceId: race.id, phoneNormalized: session.phoneNormalized } },
+  });
+
+  if (!existingParticipant && (!session.firstName || !session.lastName)) {
+    return NextResponse.json(
+      {
+        error:
+          "Renseigne ton prénom et ton nom dans Mon Espace avant de scanner une nouvelle course.",
+      },
+      { status: 400 }
+    );
+  }
+
   const participant = await prisma.participant.upsert({
     where: {
       raceId_phoneNormalized: { raceId: race.id, phoneNormalized: session.phoneNormalized },
     },
     update: {},
-    create: { raceId: race.id, phoneNormalized: session.phoneNormalized },
+    create: {
+      raceId: race.id,
+      phoneNormalized: session.phoneNormalized,
+      firstName: session.firstName,
+      lastName: session.lastName,
+    },
   });
 
   const outcome = await performScan(participant.id, race.id, checkpoint);

@@ -30,6 +30,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
+  const existingParticipant = await prisma.participant.findUnique({
+    where: {
+      raceId_phoneNormalized: { raceId: race.id, phoneNormalized: session.phoneNormalized },
+    },
+  });
+
+  // Nouveau concurrent (pas encore sur la liste de cette course) : prénom
+  // et nom sont obligatoires. Renseignés dans Mon Espace (connexion ou
+  // "+ Ajouter mon prénom et nom"), pas redemandés ici.
+  if (!existingParticipant && (!session.firstName || !session.lastName)) {
+    return NextResponse.json(
+      {
+        error:
+          "Renseigne ton prénom et ton nom dans Mon Espace avant de rejoindre une nouvelle course.",
+      },
+      { status: 400 }
+    );
+  }
+
   const participant = await prisma.participant.upsert({
     where: {
       raceId_phoneNormalized: {
@@ -41,6 +60,8 @@ export async function POST(request: NextRequest) {
     create: {
       raceId: race.id,
       phoneNormalized: session.phoneNormalized,
+      firstName: session.firstName,
+      lastName: session.lastName,
     },
   });
 

@@ -7,9 +7,9 @@ import { canRegisterForRace } from "@/lib/registration";
 
 /**
  * Point d'entrée atteint quand un concurrent scanne un QR code
- * (ouverture directe de l'URL via l'appareil photo natif, §15).
- * Ne contient jamais de donnée personnelle : uniquement un token
- * opaque identifiant la course + le point de contrôle.
+ * (ouverture directe de l'URL via l'appareil photo natif, §15). Ne
+ * contient jamais de donnée personnelle : uniquement un token opaque
+ * identifiant la course + le point de contrôle.
  */
 export async function GET(
   request: NextRequest,
@@ -66,6 +66,18 @@ export async function GET(
     if (!eligibility.allowed) {
       return NextResponse.redirect(
         `${origin}/scan/error?reason=not_registered&race=${race.id}`
+      );
+    }
+
+    const existingParticipant = await prisma.participant.findUnique({
+      where: {
+        raceId_phoneNormalized: { raceId: race.id, phoneNormalized: athleteSession.phoneNormalized },
+      },
+    });
+
+    if (!existingParticipant && (!athleteSession.firstName || !athleteSession.lastName)) {
+      return NextResponse.redirect(
+        `${origin}/scan/error?reason=name_required&race=${race.id}`
       );
     }
 

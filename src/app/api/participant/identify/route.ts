@@ -47,6 +47,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: eligibility.error }, { status: 403 });
   }
 
+  const existingParticipant = await prisma.participant.findUnique({
+    where: { raceId_phoneNormalized: { raceId, phoneNormalized: normalized.value } },
+  });
+
+  // Un nouveau concurrent (pas encore sur la liste de cette course) doit
+  // obligatoirement indiquer son prénom et son nom. Un concurrent déjà
+  // inscrit (ajouté par l'organisateur, ou déjà identifié une première
+  // fois) n'a pas besoin de les ressaisir.
+  if (!existingParticipant && (!firstName || !lastName)) {
+    return NextResponse.json(
+      { error: "Merci d'indiquer ton prénom et ton nom pour t'inscrire à cette course." },
+      { status: 400 }
+    );
+  }
+
   const participant = await prisma.participant.upsert({
     where: {
       raceId_phoneNormalized: {
