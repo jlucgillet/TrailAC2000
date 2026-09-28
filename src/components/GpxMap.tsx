@@ -115,16 +115,20 @@ export function GpxMap({
 
   const normalHeight = large ? "h-[70vh] min-h-[440px]" : "h-96";
 
+  // IMPORTANT : le <div> de la carte (containerRef) garde une className
+  // constante. Leaflet y ajoute ses propres classes (leaflet-container…) ;
+  // si React réécrivait l'attribut class en changeant de mode, elles
+  // seraient effacées et la carte s'afficherait noire. Seul le cadre
+  // extérieur change entre mode normal et plein écran.
   return (
-    <div className={fullscreen ? "fixed inset-0 z-[90] bg-bg" : "relative"}>
-      <div
-        ref={containerRef}
-        className={
-          fullscreen
-            ? "h-full w-full"
-            : `${normalHeight} w-full rounded-xl border border-border`
-        }
-      />
+    <div
+      className={
+        fullscreen
+          ? "fixed inset-0 z-[90] bg-bg"
+          : `relative ${normalHeight} w-full overflow-hidden rounded-xl border border-border`
+      }
+    >
+      <div ref={containerRef} className="h-full w-full" />
       {fullscreenControl && (
         <button
           type="button"
