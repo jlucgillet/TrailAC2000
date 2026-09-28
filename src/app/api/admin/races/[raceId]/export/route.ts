@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { formatDurationMs } from "@/lib/time";
+import { pickDisplayRun } from "@/lib/results";
 
 export async function GET(
   _request: NextRequest,
@@ -15,12 +16,12 @@ export async function GET(
 
   const participants = await prisma.participant.findMany({
     where: { raceId: race.id },
-    include: { runs: { orderBy: { attemptNumber: "desc" }, take: 1 } },
+    include: { runs: true },
   });
 
   const rows = participants
     .map((p) => {
-      const run = p.runs[0];
+      const run = pickDisplayRun(p.runs);
       return {
         bib: p.bibNumber ?? "",
         firstName: p.firstName ?? "",

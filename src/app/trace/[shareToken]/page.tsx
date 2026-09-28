@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { PublicTrackView } from "@/app/parcours/[shareToken]/PublicTrackView";
 import type { ResultRow } from "@/components/ResultsTable";
+import { pickDisplayRun } from "@/lib/results";
 
 function publicName(p: { firstName: string | null; lastName: string | null; bibNumber: string | null }) {
   if (p.firstName || p.lastName) {
@@ -25,18 +26,19 @@ export default async function PublicRaceTrackPage({
   // (jamais de numéro de téléphone).
   const participants = await prisma.participant.findMany({
     where: { raceId: race.id },
-    include: { runs: { orderBy: { attemptNumber: "desc" }, take: 1 } },
+    include: { runs: true },
   });
 
   const results: ResultRow[] = participants
-    .filter((p) => p.runs[0]?.status === "finished")
-    .map((p) => ({
+    .map((p) => ({ p, run: pickDisplayRun(p.runs) }))
+    .filter(({ run }) => run?.status === "finished")
+    .map(({ p, run }) => ({
       position: null,
       displayName: publicName(p),
       bibNumber: p.bibNumber,
       category: p.category,
       status: "finished",
-      durationMs: p.runs[0].durationMs !== null ? Number(p.runs[0].durationMs) : null,
+      durationMs: run!.durationMs !== null ? Number(run!.durationMs) : null,
     }))
     .sort((a, b) => (a.durationMs ?? Infinity) - (b.durationMs ?? Infinity))
     .map((row, i) => ({ ...row, position: i + 1 }));

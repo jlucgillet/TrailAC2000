@@ -14,6 +14,7 @@ function toLocalInputValue(iso: string | null | undefined): string {
 export function EditRunModal({
   raceId,
   participantId,
+  runId,
   displayName,
   firstName,
   lastName,
@@ -25,6 +26,8 @@ export function EditRunModal({
 }: {
   raceId: string;
   participantId: string;
+  /** Essai affiché dans le classement (le meilleur) : c'est celui-là qui est modifié/supprimé. */
+  runId?: string | null;
   displayName: string;
   firstName?: string | null;
   lastName?: string | null;
@@ -63,7 +66,9 @@ export function EditRunModal({
     setSaving(true);
     setError(null);
     const res = await fetch(
-      `/api/admin/races/${raceId}/participants/${participantId}/run`,
+      `/api/admin/races/${raceId}/participants/${participantId}/run${
+        runId ? `?runId=${encodeURIComponent(runId)}` : ""
+      }`,
       { method: "DELETE" }
     );
     const data = await res.json();
@@ -95,6 +100,7 @@ export function EditRunModal({
         body: JSON.stringify({
           startTimestamp: start ? new Date(start).toISOString() : null,
           finishTimestamp: finish ? new Date(finish).toISOString() : null,
+          runId: runId ?? null,
         }),
       }),
     ]);

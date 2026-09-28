@@ -129,6 +129,7 @@ export function ResultsTab({ raceId }: { raceId: string }) {
         <EditRunModal
           raceId={raceId}
           participantId={editingRaw.participantId}
+          runId={editingRaw.runId}
           displayName={editingRaw.displayName}
           firstName={editingRaw.firstName}
           lastName={editingRaw.lastName}

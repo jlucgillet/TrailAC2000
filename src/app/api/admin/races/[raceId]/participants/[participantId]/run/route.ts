@@ -70,10 +70,15 @@ export async function DELETE(
   const accessible = await accessibleParticipant(params.raceId, params.participantId);
   if (!accessible) return NextResponse.json({ error: "Introuvable." }, { status: 404 });
 
-  const run = await prisma.run.findFirst({
-    where: { participantId: params.participantId },
-    orderBy: { attemptNumber: "desc" },
-  });
+  // Supprime l'essai désigné par ?runId= (celui affiché dans le classement,
+  // c'est-à-dire le meilleur) ; à défaut, le dernier essai.
+  const runId = _request.nextUrl.searchParams.get("runId");
+  const run = runId
+    ? await prisma.run.findFirst({ where: { id: runId, participantId: params.participantId } })
+    : await prisma.run.findFirst({
+        where: { participantId: params.participantId },
+        orderBy: { attemptNumber: "desc" },
+      });
 
   if (!run) {
     return NextResponse.json({ error: "Aucun résultat à supprimer." }, { status: 404 });
@@ -87,6 +92,7 @@ export async function DELETE(
 const patchSchema = z.object({
   startTimestamp: z.string().nullable(),
   finishTimestamp: z.string().nullable(),
+  runId: z.string().nullable().optional(),
 });
 
 /**
@@ -129,10 +135,16 @@ export async function PATCH(
   const durationMs =
     startTimestamp && finishTimestamp ? finishTimestamp.getTime() - startTimestamp.getTime() : null;
 
-  const existingRun = await prisma.run.findFirst({
-    where: { participantId: params.participantId },
-    orderBy: { attemptNumber: "desc" },
-  });
+  // Modifie l'essai désigné par runId (celui affiché dans le classement) ;
+  // à défaut, le dernier essai.
+  const existingRun = parsed.data.runId
+    ? await prisma.run.findFirst({
+        where: { id: parsed.data.runId, participantId: params.participantId },
+      })
+    : await prisma.run.findFirst({
+        where: { participantId: params.participantId },
+        orderBy: { attemptNumber: "desc" },
+      });
 
   await prisma.$transaction(async (tx) => {
     await tx.$executeRawUnsafe(`SET LOCAL app.bypass_immutability = 'true'`);

@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { pickDisplayRun } from "@/lib/results";
 
 /**
  * Résultats publics : jamais de numéro de téléphone, uniquement
- * prénom/nom (si activé), dossard, catégorie et temps — cf. §12 RGPD.
+ * prénom/nom (si renseigné), dossard, catégorie et temps — cf. §12 RGPD.
+ * Le classement retient le MEILLEUR essai terminé de chaque concurrent.
  */
 export async function GET(
   _request: Request,
@@ -16,18 +18,17 @@ export async function GET(
 
   const participants = await prisma.participant.findMany({
     where: { raceId: race.id },
-    include: {
-      runs: { orderBy: { attemptNumber: "desc" }, take: 1 },
-    },
+    include: { runs: true },
   });
 
   const finished = participants
-    .filter((p) => p.runs[0]?.status === "finished")
-    .map((p) => ({
+    .map((p) => ({ p, run: pickDisplayRun(p.runs) }))
+    .filter(({ run }) => run?.status === "finished")
+    .map(({ p, run }) => ({
       displayName: publicName(p),
       bibNumber: p.bibNumber,
       category: p.category,
-      durationMs: p.runs[0].durationMs ? Number(p.runs[0].durationMs) : null,
+      durationMs: run!.durationMs ? Number(run!.durationMs) : null,
       status: "finished" as const,
     }))
     .sort((a, b) => (a.durationMs ?? Infinity) - (b.durationMs ?? Infinity))

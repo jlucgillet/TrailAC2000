@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { pickDisplayRun } from "@/lib/results";
 
 export async function GET(
   _request: NextRequest,
@@ -14,13 +15,16 @@ export async function GET(
 
   const participants = await prisma.participant.findMany({
     where: { raceId: race.id },
-    include: { runs: { orderBy: { attemptNumber: "desc" }, take: 1 } },
+    include: { runs: true },
   });
 
   const rows = participants.map((p) => {
-    const run = p.runs[0];
+    // Le classement retient le MEILLEUR essai terminé de chaque concurrent
+    // (pas le dernier) ; à défaut, son dernier essai pour afficher le statut.
+    const run = pickDisplayRun(p.runs);
     return {
       participantId: p.id,
+      runId: run?.id ?? null,
       displayName: [p.firstName, p.lastName].filter(Boolean).join(" ") || "—",
       firstName: p.firstName,
       lastName: p.lastName,
@@ -29,6 +33,8 @@ export async function GET(
       category: p.category,
       team: p.team,
       status: run?.status ?? "registered",
+      hasRunningRun: p.runs.some((r) => r.status === "running"),
+      attemptsCount: p.runs.length,
       startTimestamp: run?.startTimestamp ?? null,
       finishTimestamp: run?.finishTimestamp ?? null,
       durationMs: run?.durationMs ? Number(run.durationMs) : null,
@@ -50,21 +56,34 @@ export async function GET(
     return { ...r, position: r.status === "finished" ? position : null };
   });
 
+  // Dernier arrivé : l'arrivée la plus récente, tous essais confondus
+  // (pas nécessairement celle du meilleur essai affiché).
+  let lastFinish: { at: Date; name: string } | null = null;
+  for (const p of participants) {
+    for (const r of p.runs) {
+      if (r.status === "finished" && r.finishTimestamp) {
+        if (!lastFinish || r.finishTimestamp > lastFinish.at) {
+          lastFinish = {
+            at: r.finishTimestamp,
+            name: [p.firstName, p.lastName].filter(Boolean).join(" ") || "—",
+          };
+        }
+      }
+    }
+  }
+
   const stats = {
     registered: participants.length,
-    started: rows.filter((r) => r.status === "running" || r.status === "finished").length,
+    started: participants.filter((p) =>
+      p.runs.some((r) => r.status === "running" || r.status === "finished")
+    ).length,
     finished: rows.filter((r) => r.status === "finished").length,
-    running: rows.filter((r) => r.status === "running").length,
+    running: rows.filter((r) => r.hasRunningRun).length,
     bestDurationMs:
       rows
         .filter((r) => r.durationMs !== null)
         .sort((a, b) => (a.durationMs ?? 0) - (b.durationMs ?? 0))[0]?.durationMs ?? null,
-    lastFinishedName:
-      [...rows]
-        .filter((r) => r.finishTimestamp)
-        .sort(
-          (a, b) => new Date(b.finishTimestamp!).getTime() - new Date(a.finishTimestamp!).getTime()
-        )[0]?.displayName ?? null,
+    lastFinishedName: lastFinish?.name ?? null,
   };
 
   return NextResponse.json({ race, stats, results: ranked });
