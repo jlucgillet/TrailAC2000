@@ -44,6 +44,25 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
     }
   }
 
+  async function handleDelete(participantId: string, name: string) {
+    if (
+      !confirm(
+        `Supprimer ${name || "ce concurrent"} de cette course ? Son historique de chronométrage pour cette course sera aussi supprimé.`
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(`/api/admin/races/${raceId}/participants/${participantId}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data.error ?? "Erreur lors de la suppression.");
+      return;
+    }
+    mutate();
+  }
+
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -154,12 +173,22 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
                   <td className="px-4 py-3 text-muted">{p.category ?? "—"}</td>
                   <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => setEditingId(p.id)}
-                      className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
-                    >
-                      Modifier
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setEditingId(p.id)}
+                        className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
+                      >
+                        Modifier
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete(p.id, [p.firstName, p.lastName].filter(Boolean).join(" "))
+                        }
+                        className="rounded-lg border border-danger px-3 py-1.5 text-xs text-danger"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
