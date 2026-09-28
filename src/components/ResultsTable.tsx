@@ -34,6 +34,8 @@ export function ResultsTable({
   rows,
   showTimestamps = false,
   showPhone = false,
+  hideBib = false,
+  hideCategory = false,
   renderActions,
   sortKey,
   sortDir,
@@ -42,13 +44,23 @@ export function ResultsTable({
   rows: ResultRow[];
   showTimestamps?: boolean;
   showPhone?: boolean;
+  /** Masque la colonne Dossard (ex. fiche course côté concurrent). */
+  hideBib?: boolean;
+  /** Masque la colonne Catégorie. */
+  hideCategory?: boolean;
   renderActions?: (row: ResultRow) => React.ReactNode;
   /** Fournir sortKey/sortDir/onSortChange rend les en-têtes cliquables (usage admin). */
   sortKey?: ResultSortKey;
   sortDir?: "asc" | "desc";
   onSortChange?: (key: ResultSortKey) => void;
 }) {
-  const columnCount = 6 + (showTimestamps ? 2 : 0) + (showPhone ? 1 : 0) + (renderActions ? 1 : 0);
+  const columnCount =
+    6 +
+    (showTimestamps ? 2 : 0) +
+    (showPhone ? 1 : 0) +
+    (renderActions ? 1 : 0) -
+    (hideBib ? 1 : 0) -
+    (hideCategory ? 1 : 0);
 
   const Th = ({
     label,
@@ -80,10 +92,10 @@ export function ResultsTable({
         <thead className="bg-surface text-muted">
           <tr>
             <Th label="Pos." sortKeyFor="position" />
-            <Th label="Dossard" sortKeyFor="bibNumber" />
+            {!hideBib && <Th label="Dossard" sortKeyFor="bibNumber" />}
             <Th label="Concurrent" sortKeyFor="displayName" />
             {showPhone && <Th label="Téléphone" sortKeyFor="phone" />}
-            <Th label="Catégorie" sortKeyFor="category" />
+            {!hideCategory && <Th label="Catégorie" sortKeyFor="category" />}
             {showTimestamps && <th className="px-4 py-3 font-medium">Départ</th>}
             {showTimestamps && <th className="px-4 py-3 font-medium">Arrivée</th>}
             <Th label="Temps" sortKeyFor="durationMs" />
@@ -95,12 +107,12 @@ export function ResultsTable({
           {rows.map((row, i) => (
             <tr key={i} className="hover:bg-surface/60">
               <td className="px-4 py-3 tabular-nums">{row.position ?? "—"}</td>
-              <td className="px-4 py-3 tabular-nums">{row.bibNumber ?? "—"}</td>
+              {!hideBib && <td className="px-4 py-3 tabular-nums">{row.bibNumber ?? "—"}</td>}
               <td className="px-4 py-3">{row.displayName}</td>
               {showPhone && (
                 <td className="px-4 py-3 tabular-nums text-muted">{row.phone ?? "—"}</td>
               )}
-              <td className="px-4 py-3 text-muted">{row.category ?? "—"}</td>
+              {!hideCategory && <td className="px-4 py-3 text-muted">{row.category ?? "—"}</td>}
               {showTimestamps && (
                 <td className="px-4 py-3 text-muted">{row.startTimestamp ?? "—"}</td>
               )}

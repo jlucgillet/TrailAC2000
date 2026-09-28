@@ -60,7 +60,7 @@ export function RaceFiche({
       {results.length === 0 ? (
         <p className="text-muted">Aucun résultat pour le moment.</p>
       ) : (
-        <ResultsTable rows={results} />
+        <ResultsTable rows={results} hideBib hideCategory />
       )}
 
       <Link
