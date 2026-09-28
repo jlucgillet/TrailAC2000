@@ -170,7 +170,7 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
 
       {data?.gpxData && (
         <>
-          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
+          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} large fullscreenControl />
           <ShareSection raceId={raceId} data={data} onUpdated={() => mutate()} />
         </>
       )}
