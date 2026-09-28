@@ -2,20 +2,34 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { AdminMenu } from "./AdminMenu";
 import { LogoutButton } from "./LogoutButton";
 
-const NAV_LINKS = [
-  { href: "/admin/dashboard#actives", label: "Courses actives" },
-  { href: "/admin/dashboard#brouillons", label: "Brouillons" },
-  { href: "/admin/dashboard#cloturees", label: "Clôturées" },
-  { href: "/admin/dashboard#nouvelle-course", label: "+ Nouvelle course" },
-  { href: "/admin/tracks", label: "Parcours" },
-  { href: "/admin/users", label: "Utilisateurs" },
+const MOBILE_NAV = [
+  {
+    href: "/admin/dashboard",
+    label: "Courses",
+    icon: "🏁",
+    matches: (p: string) => p.startsWith("/admin/dashboard") || p.startsWith("/admin/races"),
+  },
+  {
+    href: "/admin/tracks",
+    label: "Parcours",
+    icon: "🗺️",
+    matches: (p: string) => p.startsWith("/admin/tracks"),
+  },
+  {
+    href: "/admin/users",
+    label: "Utilisateurs",
+    icon: "👥",
+    matches: (p: string) => p.startsWith("/admin/users"),
+  },
 ];
 
 export function AdminHeader({ email }: { email: string }) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-bg">
@@ -64,22 +78,31 @@ export function AdminHeader({ email }: { email: string }) {
         </button>
       </div>
 
-      {/* Panneau mobile */}
+      {/* Panneau mobile : 3 entrées principales */}
       {open && (
-        <div className="border-t border-border px-4 py-3 sm:hidden">
-          <nav className="flex flex-col gap-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm text-ink hover:bg-surface"
-              >
-                {link.label}
-              </Link>
-            ))}
+        <div className="border-t border-border px-4 py-4 sm:hidden">
+          <nav className="flex flex-col gap-2">
+            {MOBILE_NAV.map((item) => {
+              const active = item.matches(pathname);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3.5 text-base font-medium transition-colors ${
+                    active
+                      ? "border-accent bg-accent/10 text-ink"
+                      : "border-border bg-surface text-ink hover:border-muted"
+                  }`}
+                >
+                  <span className="text-xl">{item.icon}</span>
+                  {item.label}
+                  {active && <span className="ml-auto text-xs text-accent">●</span>}
+                </Link>
+              );
+            })}
           </nav>
-          <div className="mt-3 flex items-center justify-between border-t border-border pt-3 text-sm text-muted">
+          <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted">
             <span className="truncate">{email}</span>
             <LogoutButton />
           </div>
