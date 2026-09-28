@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
+import { BusyIndicator } from "@/components/BusyIndicator";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const barlowCondensed = Barlow_Condensed({
@@ -31,6 +33,9 @@ export default function RootLayout({
     <html lang="fr" className={`${inter.variable} ${barlowCondensed.variable}`}>
       <body className="font-body min-h-screen bg-bg text-ink antialiased">
         {children}
+        <Suspense fallback={null}>
+          <BusyIndicator />
+        </Suspense>
       </body>
     </html>
   );
