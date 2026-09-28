@@ -74,20 +74,22 @@ export function AthleteDashboard() {
                       href={`/mon-espace/course/${r.raceId}`}
                       className="rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
                     >
-                      Scanner cette course
+                      📷 Scanner cette course
                     </Link>
                   )}
                   <Link
                     href={`/mon-espace/course/${r.raceId}/fiche`}
-                    className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+                    className="flex items-center gap-1.5 rounded-lg border border-ink/40 bg-surfaceRaised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
                   >
+                    <span aria-hidden>🗺️</span>
                     Fiche
                   </Link>
                   {r.attemptsCount > 0 && (
                     <Link
                       href={`/mon-espace/course/${r.raceId}/resultats`}
-                      className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+                      className="flex items-center gap-1.5 rounded-lg border border-amber/60 bg-amber/10 px-4 py-2 text-sm font-semibold text-amber transition-colors hover:bg-amber/20"
                     >
+                      <span aria-hidden>🏆</span>
                       Mes résultats
                     </Link>
                   )}
