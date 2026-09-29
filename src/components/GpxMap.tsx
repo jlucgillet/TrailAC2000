@@ -73,6 +73,42 @@ function gradeToColor(gradePercent: number): string {
   return uphill ? "#7F1D1D" : "#14532D";
 }
 
+/** Place une petite pastille numérotée tous les kilomètres le long du tracé. */
+function addKmMarkers(
+  L: typeof import("leaflet"),
+  map: import("leaflet").Map,
+  points: MapPoint[]
+) {
+  let cumulativeMeters = 0;
+  let nextKm = 1;
+
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const segmentMeters = haversineMeters(a, b);
+    const segmentStart = cumulativeMeters;
+    const segmentEnd = cumulativeMeters + segmentMeters;
+
+    while (nextKm * 1000 <= segmentEnd && segmentMeters > 0) {
+      const t = (nextKm * 1000 - segmentStart) / segmentMeters;
+      const lat = a.lat + (b.lat - a.lat) * t;
+      const lon = a.lon + (b.lon - a.lon) * t;
+
+      const icon = L.divIcon({
+        className: "",
+        html: `<div style="background:#0B1410;color:#F5F7F3;border:2px solid #FFFFFF;border-radius:9999px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.5);">${nextKm}</div>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+      });
+      L.marker([lat, lon], { icon }).addTo(map).bindTooltip(`${nextKm} km`);
+
+      nextKm += 1;
+    }
+
+    cumulativeMeters = segmentEnd;
+  }
+}
+
 /**
  * Carte du tracé GPX (Leaflet). Le tracé est coloré par tronçons selon la
  * pente (rouge = montée, vert = descente, nuances selon l'intensité) quand
@@ -152,6 +188,8 @@ export function GpxMap({
       } else {
         L.polyline(latlngs, { color: "#3B82F6", weight: 4 }).addTo(map);
       }
+
+      addKmMarkers(L, map, points);
 
       map.fitBounds(bounds, { padding: [24, 24] });
 
