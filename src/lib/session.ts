@@ -15,11 +15,10 @@ const PARTICIPANT_COOKIE = "trail_participant_session";
 const ADMIN_COOKIE = "trail_admin_session";
 const ATHLETE_COOKIE = "trail_athlete_session";
 
-// --- Session concurrent -----------------------------------------------
+// --- Session concurrent (scan classique) ---------------------------------
 // Pas de mot de passe : après saisie + validation du numéro de téléphone,
-// on pose un cookie signé, valable pour la durée de la course, qui relie
-// les scans suivants au bon participant sans qu'il ait à ressaisir son
-// numéro (voir §29 du cahier des charges : simplifier l'UX du jour J).
+// on pose un cookie signé, qui relie les scans suivants au bon participant
+// sans qu'il ait à ressaisir son numéro.
 
 export type ParticipantSessionPayload = {
   participantId: string;
@@ -59,7 +58,11 @@ export async function getParticipantSession(): Promise<ParticipantSessionPayload
   }
 }
 
-// --- Session admin ------------------------------------------------------
+export function clearParticipantSession() {
+  cookies().delete(PARTICIPANT_COOKIE);
+}
+
+// --- Session admin ---------------------------------------------------------
 
 export type AdminSessionPayload = {
   adminId: string;
@@ -67,10 +70,13 @@ export type AdminSessionPayload = {
 };
 
 export async function createAdminSession(payload: AdminSessionPayload) {
+  // Durée alignée sur les sessions concurrent/Mon Espace : reste active
+  // tant que l'organisateur ne se déconnecte pas explicitement, pratique
+  // sur plusieurs jours de préparation/course sans avoir à se reconnecter.
   const token = await new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("12h")
+    .setExpirationTime("180d")
     .sign(secretKey());
 
   cookies().set(ADMIN_COOKIE, token, {
@@ -78,7 +84,7 @@ export async function createAdminSession(payload: AdminSessionPayload) {
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 12,
+    maxAge: 60 * 60 * 24 * 180,
   });
 }
 
@@ -97,17 +103,11 @@ export function clearAdminSession() {
   cookies().delete(ADMIN_COOKIE);
 }
 
-export function clearParticipantSession() {
-  cookies().delete(PARTICIPANT_COOKIE);
-}
-
-// --- Session "espace concurrent" (persistante, multi-courses) ---------
-// Contrairement à la session participant ci-dessus (liée à UNE course, posée
-// après un scan), cette session sert à un espace où le concurrent consulte
-// l'historique de toutes ses courses et peut en rejoindre de nouvelles.
-// Identification par téléphone seul, sans code de vérification (même niveau
-// de sécurité que le reste de l'application : voir la note du cahier des
-// charges sur ce compromis).
+// --- Session "espace concurrent" (persistante, multi-courses) -------------
+// Contrairement à la session participant ci-dessus (liée à UNE course,
+// posée après un scan), cette session sert à un espace où le concurrent
+// consulte l'historique de toutes ses courses et peut en rejoindre de
+// nouvelles. Identification par téléphone seul, sans code de vérification.
 
 export type AthleteSessionPayload = {
   phoneNormalized: string;
