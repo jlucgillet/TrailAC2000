@@ -52,7 +52,7 @@ export function RaceFiche({
 
       {gpxData && points.length > 1 && (
         <div className="mb-10">
-          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
+          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} basemapControl />
         </div>
       )}
 

@@ -90,7 +90,7 @@ export function TrackDetail({
       {isLoading ? (
         <p className="text-muted">Chargement de la carte…</p>
       ) : (
-        <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} large fullscreenControl />
+        <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} large fullscreenControl basemapControl />
       )}
 
       {!isLoading && <ShareSection trackId={trackId} data={data} onUpdated={() => mutate()} />}
