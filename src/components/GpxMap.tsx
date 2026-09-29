@@ -26,13 +26,6 @@ const BASEMAPS = {
     attribution: "Tiles &copy; Esri",
     maxZoom: 19,
   },
-  dark: {
-    label: "Sombre",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution:
-      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    maxZoom: 19,
-  },
 } as const;
 
 type BasemapKey = keyof typeof BASEMAPS;
@@ -135,7 +128,7 @@ export function GpxMap({
   const tileLayerRef = useRef<import("leaflet").TileLayer | null>(null);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
-  const [basemap, setBasemap] = useState<BasemapKey>("standard");
+  const [basemap, setBasemap] = useState<BasemapKey>("topo");
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const pointsKey = `${points.length}:${points
@@ -154,7 +147,7 @@ export function GpxMap({
       const map = L.map(containerRef.current);
       mapRef.current = map;
 
-      const base = BASEMAPS.standard;
+      const base = BASEMAPS[basemap];
       tileLayerRef.current = L.tileLayer(base.url, {
         attribution: base.attribution,
         maxZoom: base.maxZoom,
