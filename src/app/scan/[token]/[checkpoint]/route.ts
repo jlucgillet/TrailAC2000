@@ -54,8 +54,13 @@ export async function GET(
     const athleteSession = await getAthleteSession();
 
     if (!athleteSession) {
-      const redirectTo = `/course/${race.id}?pendingCheckpoint=${checkpoint}&pendingToken=${token}`;
-      return NextResponse.redirect(`${origin}${redirectTo}`);
+      // Personne pas encore identifiée : on l'envoie s'identifier (téléphone
+      // + nom), sans essayer d'enregistrer ce scan-ci. Une fois identifiée,
+      // elle devra scanner à nouveau le QR DÉPART pour lancer son chrono —
+      // ce second scan est alors immédiat (session déjà active), donc
+      // l'heure enregistrée n'est jamais faussée par le temps de saisie
+      // du formulaire.
+      return NextResponse.redirect(`${origin}/course/${race.id}`);
     }
 
     const eligibility = await canRegisterForRace(

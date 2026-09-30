@@ -3,7 +3,6 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
 import { createParticipantSession, clearAthleteSession } from "@/lib/session";
-import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 import { canRegisterForRace } from "@/lib/registration";
 
@@ -12,10 +11,16 @@ const bodySchema = z.object({
   phone: z.string().min(4),
   firstName: z.string().trim().max(100).optional(),
   lastName: z.string().trim().max(100).optional(),
-  pendingCheckpoint: z.enum(["start", "finish"]).optional(),
-  pendingToken: z.string().optional(),
 });
 
+/**
+ * Identifie le concurrent (téléphone + nom) et ouvre sa session pour cette
+ * course — c'est tout. Ne scanne jamais un point de contrôle à sa place :
+ * si la personne est arrivée ici via un scan QR sans être identifiée, on
+ * lui demande de scanner à nouveau une fois identifiée (voir l'écran de
+ * chrono, qui invite à scanner DÉPART tant qu'aucun run n'existe). Ça
+ * évite que le temps de saisie de ce formulaire ne fausse le chronométrage.
+ */
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "unknown";
   if (isRateLimited(`identify_${hashIp(ip)}`, 15, 60_000)) {
@@ -30,7 +35,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
 
-  const { raceId, phone, firstName, lastName, pendingCheckpoint, pendingToken } = parsed.data;
+  const { raceId, phone, firstName, lastName } = parsed.data;
 
   const race = await prisma.race.findUnique({ where: { id: raceId } });
   if (!race || race.status === "archived") {
@@ -91,37 +96,6 @@ export async function POST(request: NextRequest) {
     raceId,
     phoneNormalized: normalized.value,
   });
-
-  if (pendingCheckpoint && pendingToken) {
-    const tokenField: "qrStartToken" | "qrFinishToken" =
-      pendingCheckpoint === "start" ? "qrStartToken" : "qrFinishToken";
-    if (race[tokenField] !== pendingToken) {
-      return NextResponse.json(
-        { error: "Ce QR code correspond à une autre course." },
-        { status: 400 }
-      );
-    }
-
-    const outcome = await performScan(participant.id, raceId, pendingCheckpoint);
-
-    await prisma.scanLog.create({
-      data: {
-        raceId,
-        participantId: participant.id,
-        checkpoint: pendingCheckpoint,
-        result:
-          outcome.kind === "started" || outcome.kind === "finished"
-            ? "success"
-            : outcome.kind === "already_started" || outcome.kind === "already_finished"
-            ? "duplicate"
-            : "rejected",
-        ipHash: hashIp(ip),
-        userAgent: request.headers.get("user-agent") ?? undefined,
-      },
-    });
-
-    return NextResponse.json({ identified: true, outcome, raceId });
-  }
 
   return NextResponse.json({ identified: true, raceId });
 }

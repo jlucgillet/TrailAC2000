@@ -6,13 +6,9 @@ import { useRouter } from "next/navigation";
 export function PhoneForm({
   raceId,
   raceName,
-  pendingCheckpoint,
-  pendingToken,
 }: {
   raceId: string;
   raceName: string;
-  pendingCheckpoint?: string;
-  pendingToken?: string;
 }) {
   const router = useRouter();
   const [phone, setPhone] = useState("");
@@ -35,8 +31,6 @@ export function PhoneForm({
           phone,
           firstName: firstName || undefined,
           lastName: lastName || undefined,
-          pendingCheckpoint,
-          pendingToken,
         }),
       });
       const data = await res.json();

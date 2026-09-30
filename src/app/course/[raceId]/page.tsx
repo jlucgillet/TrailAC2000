@@ -7,7 +7,6 @@ export default async function CourseIdentifyPage({
   searchParams,
 }: {
   params: { raceId: string };
-  searchParams: { pendingCheckpoint?: string; pendingToken?: string };
 }) {
   const race = await prisma.race.findUnique({ where: { id: params.raceId } });
   if (!race || race.status === "archived") {
@@ -25,12 +24,5 @@ export default async function CourseIdentifyPage({
     );
   }
 
-  return (
-    <PhoneForm
-      raceId={race.id}
-      raceName={race.name}
-      pendingCheckpoint={searchParams.pendingCheckpoint}
-      pendingToken={searchParams.pendingToken}
-    />
-  );
+  return <PhoneForm raceId={race.id} raceName={race.name} />;
 }
