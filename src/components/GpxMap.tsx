@@ -282,10 +282,11 @@ export function GpxMap({
             type="button"
             onClick={() => setFullscreen((v) => !v)}
             aria-pressed={fullscreen}
-            className="flex items-center gap-1.5 rounded-lg border border-border bg-bg/90 px-3 py-2 text-sm font-semibold text-ink shadow-md backdrop-blur-sm hover:border-ink"
+            aria-label={fullscreen ? "Quitter le plein écran" : "Plein écran"}
+            title={fullscreen ? "Quitter le plein écran" : "Plein écran"}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
           >
             <span aria-hidden>{fullscreen ? "✕" : "⛶"}</span>
-            {fullscreen ? "Quitter le plein écran" : "Plein écran"}
           </button>
         )}
 
