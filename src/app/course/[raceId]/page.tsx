@@ -4,7 +4,6 @@ import { PhoneForm } from "@/components/PhoneForm";
 
 export default async function CourseIdentifyPage({
   params,
-  searchParams,
 }: {
   params: { raceId: string };
 }) {
