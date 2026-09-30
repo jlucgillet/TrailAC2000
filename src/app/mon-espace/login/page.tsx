@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export default function AthleteLoginPage() {
-  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -16,6 +14,12 @@ export default function AthleteLoginPage() {
     setLoading(true);
     setError(null);
 
+    // Filet de sécurité : sans ça, une requête anormalement lente (base de
+    // données qui se réveille, réseau capricieux) laissait "Connexion…"
+    // tourner indéfiniment, sans jamais retomber sur un message d'erreur.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch("/api/athlete/login", {
         method: "POST",
@@ -25,17 +29,28 @@ export default function AthleteLoginPage() {
           firstName: firstName || undefined,
           lastName: lastName || undefined,
         }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      clearTimeout(timeout);
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(data.error ?? "Erreur de connexion.");
         setLoading(false);
         return;
       }
-      router.push("/mon-espace");
-      router.refresh();
-    } catch {
-      setError("Connexion impossible. Vérifie ton réseau et réessaie.");
+      // Navigation complète plutôt que client-side : garantit que le
+      // cookie de session tout juste posé est bien pris en compte, et
+      // affiche l'indicateur de chargement natif du navigateur si la page
+      // suivante met du temps à répondre, plutôt que de laisser ce bouton
+      // tourner sans qu'on sache si quelque chose se passe.
+      window.location.href = "/mon-espace";
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("La connexion prend trop de temps. Réessaie dans quelques secondes.");
+      } else {
+        setError("Connexion impossible. Vérifie ton réseau et réessaie.");
+      }
       setLoading(false);
     }
   }

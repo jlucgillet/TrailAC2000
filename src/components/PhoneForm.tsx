@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 
 export function PhoneForm({
   raceId,
@@ -10,7 +9,6 @@ export function PhoneForm({
   raceId: string;
   raceName: string;
 }) {
-  const router = useRouter();
   const [phone, setPhone] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -22,6 +20,12 @@ export function PhoneForm({
     setLoading(true);
     setError(null);
 
+    // Filet de sécurité : sans ça, une requête anormalement lente (base de
+    // données qui se réveille, réseau capricieux) laissait "Vérification…"
+    // tourner indéfiniment, sans jamais retomber sur un message d'erreur.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
+
     try {
       const res = await fetch("/api/participant/identify", {
         method: "POST",
@@ -32,8 +36,10 @@ export function PhoneForm({
           firstName: firstName || undefined,
           lastName: lastName || undefined,
         }),
+        signal: controller.signal,
       });
-      const data = await res.json();
+      clearTimeout(timeout);
+      const data = await res.json().catch(() => ({}));
 
       if (!res.ok) {
         setError(data.error ?? "Une erreur est survenue.");
@@ -41,9 +47,16 @@ export function PhoneForm({
         return;
       }
 
-      router.push(`/course/${raceId}/scanner`);
-    } catch {
-      setError("Connexion impossible. Vérifie ton réseau et réessaie.");
+      // Navigation complète plutôt que client-side : garantit que la
+      // session tout juste posée est bien prise en compte.
+      window.location.href = `/course/${raceId}/scanner`;
+    } catch (err) {
+      clearTimeout(timeout);
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError("La connexion prend trop de temps. Réessaie dans quelques secondes.");
+      } else {
+        setError("Connexion impossible. Vérifie ton réseau et réessaie.");
+      }
       setLoading(false);
     }
   }
