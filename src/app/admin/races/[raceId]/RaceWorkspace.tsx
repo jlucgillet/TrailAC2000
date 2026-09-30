@@ -6,6 +6,7 @@ import { QrCodesTab } from "./QrCodesTab";
 import { ParcoursTab } from "./ParcoursTab";
 import { ParticipantsTab } from "./ParticipantsTab";
 import { ResultsTab } from "./ResultsTab";
+import { AllAttemptsTab } from "./AllAttemptsTab";
 import { SettingsTab } from "./SettingsTab";
 
 type Race = {
@@ -26,6 +27,7 @@ const TABS = [
   { id: "parcours", label: "Parcours" },
   { id: "participants", label: "Concurrents" },
   { id: "results", label: "Résultats" },
+  { id: "allAttempts", label: "Tous les essais" },
   { id: "settings", label: "Réglages" },
 ] as const;
 
@@ -83,6 +85,7 @@ export function RaceWorkspace({ race: initialRace }: { race: Race }) {
       {tab === "parcours" && <ParcoursTab raceId={race.id} />}
       {tab === "participants" && <ParticipantsTab raceId={race.id} />}
       {tab === "results" && <ResultsTab raceId={race.id} />}
+      {tab === "allAttempts" && <AllAttemptsTab raceId={race.id} />}
       {tab === "settings" && (
         <SettingsTab
           race={race}

@@ -13,17 +13,24 @@ export type ScanOutcome =
  * Traite un scan DÉPART ou ARRIVÉE de façon atomique.
  *
  * Principe de fiabilité (voir §28 du cahier des charges) :
- *  - Tous les timestamps sont générés par NOW() PostgreSQL, jamais par
- *    l'horloge du process Node ni par le client.
+ *  - Tous les timestamps sont générés côté serveur, jamais par l'horloge
+ *    du process Node au moment le plus tardif possible ni par le client.
+ *  - `timestamp` est TOUJOURS une valeur produite par notre propre
+ *    serveur — soit `new Date()` à l'instant de l'appel (comportement par
+ *    défaut), soit une valeur capturée plus tôt par le serveur (ex. au
+ *    moment exact où le QR code a été scanné, avant même que la personne
+ *    ait fini de saisir son téléphone) et transmise de façon infalsifiable
+ *    via un ticket signé — jamais une valeur simplement recopiée depuis
+ *    une requête client sans garantie d'origine.
  *  - Les contraintes d'unicité posées en base (voir manual_constraints.sql)
  *    garantissent qu'en cas de double requête simultanée, une seule est
- *    acceptée — même si la logique applicative ci-dessous était, par
- *    hypothèse, contournée ou rejouée en parallèle.
+ *    acceptée.
  */
 export async function performScan(
   participantId: string,
   raceId: string,
-  checkpoint: "start" | "finish"
+  checkpoint: "start" | "finish",
+  timestamp: Date = new Date()
 ): Promise<ScanOutcome> {
   const race = await prisma.race.findUnique({ where: { id: raceId } });
   if (!race || race.status !== "active") {
@@ -31,12 +38,12 @@ export async function performScan(
   }
 
   if (checkpoint === "start") {
-    return startRun(participantId);
+    return startRun(participantId, timestamp);
   }
-  return finishRun(participantId);
+  return finishRun(participantId, timestamp);
 }
 
-async function startRun(participantId: string): Promise<ScanOutcome> {
+async function startRun(participantId: string, timestamp: Date): Promise<ScanOutcome> {
   try {
     return await prisma.$transaction(async (tx) => {
       const existingRunning = await tx.run.findFirst({
@@ -46,12 +53,19 @@ async function startRun(participantId: string): Promise<ScanOutcome> {
         return { kind: "already_started" } as const;
       }
 
-      const previousAttempts = await tx.run.count({ where: { participantId } });
+      // Numérotation basée sur le numéro d'essai le plus haut déjà utilisé
+      // (pas un simple comptage des lignes) : reste correcte même si un
+      // essai a été supprimé entre-temps par un administrateur.
+      const lastAttempt = await tx.run.findFirst({
+        where: { participantId },
+        orderBy: { attemptNumber: "desc" },
+      });
+      const nextAttemptNumber = (lastAttempt?.attemptNumber ?? 0) + 1;
       const id = randomUUID();
 
       const rows = await tx.$queryRaw<{ start_timestamp: Date }[]>`
         INSERT INTO runs (id, participant_id, attempt_number, status, start_timestamp, created_at, updated_at)
-        VALUES (${id}, ${participantId}, ${previousAttempts + 1}, 'running'::"RunStatus", NOW(), NOW(), NOW())
+        VALUES (${id}, ${participantId}, ${nextAttemptNumber}, 'running'::"RunStatus", ${timestamp}, NOW(), NOW())
         RETURNING start_timestamp
       `;
 
@@ -67,7 +81,7 @@ async function startRun(participantId: string): Promise<ScanOutcome> {
   }
 }
 
-async function finishRun(participantId: string): Promise<ScanOutcome> {
+async function finishRun(participantId: string, timestamp: Date): Promise<ScanOutcome> {
   return prisma.$transaction(async (tx) => {
     const runningRun = await tx.run.findFirst({
       where: { participantId, status: "running" },
@@ -89,9 +103,9 @@ async function finishRun(participantId: string): Promise<ScanOutcome> {
       { start_timestamp: Date; finish_timestamp: Date; duration_ms: bigint }[]
     >`
       UPDATE runs
-      SET finish_timestamp = NOW(),
+      SET finish_timestamp = ${timestamp},
           status = 'finished'::"RunStatus",
-          duration_ms = FLOOR(EXTRACT(EPOCH FROM (NOW() - start_timestamp)) * 1000),
+          duration_ms = FLOOR(EXTRACT(EPOCH FROM (${timestamp}::timestamptz - start_timestamp)) * 1000),
           updated_at = NOW()
       WHERE id = ${runningRun.id} AND status = 'running'::"RunStatus"
       RETURNING start_timestamp, finish_timestamp, duration_ms
@@ -114,14 +128,13 @@ async function finishRun(participantId: string): Promise<ScanOutcome> {
 
 function isUniqueViolation(err: unknown): boolean {
   return (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    (err as { code?: string }).code === "P2002"
-  ) || (
-    typeof err === "object" &&
-    err !== null &&
-    "code" in err &&
-    (err as { code?: string }).code === "23505"
+    (typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: string }).code === "P2002") ||
+    (typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code?: string }).code === "23505")
   );
 }
