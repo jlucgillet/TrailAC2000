@@ -24,6 +24,17 @@ export function RaceFiche({
 }) {
   const points = gpxData ? parseGpxPoints(gpxData) : [];
 
+  // Itinéraire piéton Google Maps : vers le point de départ du GPX si
+  // disponible (le plus précis), sinon vers le lieu renseigné pour la
+  // course, sinon pas de bouton (rien à quoi se rendre).
+  const directionsDestination =
+    points.length > 0 ? `${points[0].lat},${points[0].lon}` : location ? location : null;
+  const directionsUrl = directionsDestination
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        directionsDestination
+      )}&travelmode=walking`
+    : null;
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <Link href="/mon-espace" className="text-sm text-muted underline">
@@ -50,9 +61,21 @@ export function RaceFiche({
         </div>
       </div>
 
+      {directionsUrl && (
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-6 inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2.5 text-sm font-semibold text-ink hover:border-accent"
+        >
+          <span aria-hidden>🚶</span>
+          S&rsquo;y rendre à pied
+        </a>
+      )}
+
       {gpxData && points.length > 1 && (
         <div className="mb-10">
-          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} basemapControl />
+          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} basemapControl fullscreenControl />
         </div>
       )}
 
