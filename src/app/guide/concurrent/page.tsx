@@ -24,7 +24,7 @@ export default function ConcurrentGuidePage() {
         <h2 className="mb-1 font-display text-2xl font-semibold">Scanner directement, sans connexion</h2>
         <p className="mb-8 text-muted">Idéal le jour de la course : pas besoin de créer de compte.</p>
 
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
           <GuideStep
             number={1}
             caption={
@@ -45,9 +45,8 @@ export default function ConcurrentGuidePage() {
             number={2}
             caption={
               <>
-                <b className="text-ink">La première fois seulement</b> : le navigateur s&rsquo;ouvre
-                automatiquement, saisis ton numéro (nom facultatif), puis « Continuer ». Aux scans
-                suivants, tu es reconnu automatiquement.
+                <b className="text-ink">La première fois seulement</b> : le navigateur s&rsquo;ouvre,
+                saisis ton numéro (nom obligatoire pour un nouveau concurrent), puis « Continuer ».
               </>
             }
           >
@@ -65,8 +64,24 @@ export default function ConcurrentGuidePage() {
             number={3}
             caption={
               <>
-                Le <b className="text-ink">chronomètre démarre automatiquement</b>. Cours ! Le temps
-                est calculé par le serveur, pas par ton téléphone.
+                Le <b className="text-ink">scanner s&rsquo;ouvre automatiquement</b> dans la page.
+                Vise à nouveau le QR code DÉPART — c&rsquo;est <b className="text-ink">ce scan-ci</b>{" "}
+                qui compte, pas le premier.
+              </>
+            }
+          >
+            <p className="mb-2 text-center text-[10px] text-muted">Vise le QR code DÉPART</p>
+            <div className="flex flex-1 items-center justify-center rounded-lg border-2 border-dashed border-border p-3 text-center text-[10px] text-muted">
+              Caméra active
+            </div>
+          </GuideStep>
+
+          <GuideStep
+            number={4}
+            caption={
+              <>
+                Le <b className="text-ink">chronomètre démarre</b>. Cours ! Le temps est calculé par
+                le serveur, pas par ton téléphone.
               </>
             }
           >
@@ -82,11 +97,11 @@ export default function ConcurrentGuidePage() {
           </GuideStep>
 
           <GuideStep
-            number={4}
+            number={5}
             caption={
               <>
-                Scanne le QR code <b className="text-ink">ARRIVÉE</b> en franchissant la ligne : ton
-                temps s&rsquo;affiche instantanément.
+                Scanne le QR code <b className="text-ink">ARRIVÉE</b> en franchissant la ligne (caméra
+                native ou scanner intégré) : ton temps s&rsquo;affiche instantanément.
               </>
             }
           >
@@ -199,9 +214,9 @@ export default function ConcurrentGuidePage() {
           <div className="rounded-xl border border-accent/40 bg-accent/5 p-5">
             <p className="mb-1 font-medium">🔐 Connexion mémorisée</p>
             <p className="text-sm text-muted">
-              Une fois identifié, tu n&rsquo;as <b className="text-ink">plus besoin de ressaisir ton
-              numéro</b> pour scanner à nouveau — la connexion reste active très longtemps, jusqu&rsquo;à
-              ce que tu te déconnectes toi-même.
+              Une fois identifié (au premier scan DÉPART, en deux temps), tu n&rsquo;as{" "}
+              <b className="text-ink">plus besoin de ressaisir ton numéro</b> ensuite — la connexion
+              reste active très longtemps, jusqu&rsquo;à ce que tu te déconnectes toi-même.
             </p>
           </div>
           <div className="rounded-xl border border-accent/40 bg-accent/5 p-5">

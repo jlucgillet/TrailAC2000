@@ -94,6 +94,12 @@ export function Chrono({ raceId }: { raceId: string }) {
           Scanne le QR code<br />DÉPART
         </h1>
         <p className="text-muted">Ton chronomètre démarrera automatiquement au scan.</p>
+        <Link
+          href={`/course/${raceId}/scanner`}
+          className="mt-6 rounded-xl bg-accent px-6 py-3 font-semibold text-bg"
+        >
+          Ouvrir le scanner
+        </Link>
         {offline && <ConnectionWarning />}
         <BackToAthleteSpace />
         <SwitchCompetitor raceId={raceId} />
