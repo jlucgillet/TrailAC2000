@@ -90,7 +90,7 @@ export function AnyScanner() {
         </div>
       )}
 
-      <Link href="/mon-espace" className="text-sm text-muted underline">
+      <Link href="/mon-espace" className="mt-8 inline-block rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-bg">
         Retour à mon espace
       </Link>
     </div>

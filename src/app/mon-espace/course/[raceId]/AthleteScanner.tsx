@@ -41,7 +41,7 @@ export function AthleteScanner({
           <strong className="text-ink">{raceName}</strong> n&rsquo;est pas (ou plus) ouverte au
           chronométrage.
         </p>
-        <Link href="/mon-espace" className="text-accent underline">
+        <Link href="/mon-espace" className="mt-8 inline-block rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-bg">
           Retour à mon espace
         </Link>
       </div>
@@ -104,7 +104,7 @@ export function AthleteScanner({
         </div>
       )}
 
-      <Link href="/mon-espace" className="text-sm text-muted underline">
+      <Link href="/mon-espace" className="mt-8 inline-block rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-bg">
         Retour à mon espace
       </Link>
     </div>
