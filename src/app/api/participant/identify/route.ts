@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { normalizePhone } from "@/lib/phone";
-import { createParticipantSession, clearAthleteSession } from "@/lib/session";
+import { createParticipantSession, createAthleteSession } from "@/lib/session";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 import { canRegisterForRace } from "@/lib/registration";
 
@@ -86,15 +86,23 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  // S'identifier via le scan classique repart aussi d'une identité propre :
-  // toute session Mon Espace laissée par une autre personne sur cet
-  // appareil est effacée, pour ne jamais mélanger les deux identités.
-  clearAthleteSession();
-
   await createParticipantSession({
     participantId: participant.id,
     raceId,
     phoneNormalized: normalized.value,
+  });
+
+  // S'identifier via le scan classique ouvre aussi la session "Mon Espace",
+  // avec cette identité (celle qui vient d'être saisie/confirmée) — sinon
+  // "Retour à mon espace" redemanderait le téléphone. Comme on repart
+  // toujours d'une identité fraîchement saisie ici, ça ne mélange jamais
+  // deux personnes différentes sur un appareil partagé (contrairement à
+  // une session Mon Espace laissée ouverte par quelqu'un d'autre : celle-ci
+  // est remplacée, pas complétée).
+  await createAthleteSession({
+    phoneNormalized: normalized.value,
+    firstName: participant.firstName ?? undefined,
+    lastName: participant.lastName ?? undefined,
   });
 
   return NextResponse.json({ identified: true, raceId });
