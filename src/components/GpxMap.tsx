@@ -295,10 +295,11 @@ export function GpxMap({
               type="button"
               onClick={() => setPickerOpen((v) => !v)}
               aria-expanded={pickerOpen}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg/90 px-3 py-2 text-sm font-semibold text-ink shadow-md backdrop-blur-sm hover:border-ink"
+              aria-label="Changer le fond de carte"
+              title="Changer le fond de carte"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
             >
               <span aria-hidden>🗺️</span>
-              {BASEMAPS[basemap].label}
             </button>
             {pickerOpen && (
               <div className="absolute right-0 top-full mt-1 w-40 overflow-hidden rounded-lg border border-border bg-bg shadow-lg">
