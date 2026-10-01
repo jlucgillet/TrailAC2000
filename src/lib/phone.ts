@@ -1,14 +1,17 @@
 export type NormalizePhoneResult = { ok: true; value: string } | { ok: false; error: string };
 
 /**
- * Normalise un numéro de téléphone français vers une forme canonique
- * unique "0X XXXXXXXX" (10 chiffres, sans espace) — quelle que soit la
- * façon dont il a été saisi (+33, 0033, avec espaces/points/tirets...).
+ * Normalise un numéro de téléphone français vers la forme canonique
+ * international "+33XXXXXXXXX" (sans espace) — c'est le format déjà
+ * utilisé par TOUTES les fiches concurrent existantes en base, quelle que
+ * soit la façon dont le numéro a été saisi (0X, +33, 0033, avec
+ * espaces/points/tirets...).
  *
  * Important pour l'intégrité des données : la même personne doit TOUJOURS
  * normaliser vers exactement la même valeur, sinon deux saisies
  * différentes du même numéro créeraient deux fiches concurrent distinctes
- * pour la même personne (elle apparaîtrait deux fois dans les classements).
+ * pour la même personne (elle n'apparaîtrait pas dans tous ses résultats,
+ * ou apparaîtrait deux fois dans un classement).
  */
 export function normalizePhone(raw: string): NormalizePhoneResult {
   if (!raw || !raw.trim()) {
@@ -24,14 +27,15 @@ export function normalizePhone(raw: string): NormalizePhoneResult {
     cleaned = "+" + cleaned.slice(2);
   }
 
-  // +33 6 12 34 56 78  →  06 12 34 56 78
-  if (cleaned.startsWith("+33")) {
-    cleaned = "0" + cleaned.slice(3);
-  } else if (cleaned.startsWith("33") && cleaned.length === 11) {
-    cleaned = "0" + cleaned.slice(2);
+  // 06 12 34 56 78  →  +33612345678
+  if (cleaned.startsWith("0") && cleaned.length === 10) {
+    cleaned = "+33" + cleaned.slice(1);
+  } else if (/^33\d{9}$/.test(cleaned)) {
+    // 33612345678 (sans le +, 11 chiffres) → +33612345678
+    cleaned = "+" + cleaned;
   }
 
-  if (!/^0[1-9]\d{8}$/.test(cleaned)) {
+  if (!/^\+33[1-9]\d{8}$/.test(cleaned)) {
     return {
       ok: false,
       error: "Numéro de téléphone invalide (format français attendu, ex. 06 12 34 56 78).",
