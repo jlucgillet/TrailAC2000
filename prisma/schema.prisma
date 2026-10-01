@@ -66,6 +66,7 @@ model Race {
   gpxData        String? @db.Text
   timezone    String     @default("Europe/Paris")
   status      RaceStatus @default(draft)
+  emailNotificationsEnabled Boolean @default(true)
 
   // Tokens opaques utilisés dans les URLs des QR codes.
   // Régénérables indépendamment de l'id de la course pour invalider

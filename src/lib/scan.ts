@@ -1,5 +1,4 @@
 import { randomUUID } from "crypto";
-import { unstable_after as after } from "next/server";
 import { prisma } from "./db";
 import { notifyAdminsOfFinish } from "./notifications";
 
@@ -87,23 +86,12 @@ async function finishRun(participantId: string, timestamp: Date): Promise<ScanOu
   const outcome = await runFinishTransaction(participantId, timestamp);
 
   // L'envoi d'email ne doit JAMAIS ralentir la réponse du scan (l'envoi
-  // SMTP peut prendre plusieurs secondes). unstable_after() programme ce
-  // travail pour APRÈS que la réponse soit déjà repartie vers le
-  // concurrent, au lieu de l'attendre ici avec un simple `await`.
+  // SMTP peut prendre plusieurs secondes) : on lance ce travail SANS
+  // l'attendre (pas de `await` devant l'appel), pour que la réponse parte
+  // immédiatement vers le concurrent pendant que l'email part en tâche de
+  // fond. Toute erreur est interceptée ici — jamais propagée à l'appelant.
   if (outcome.kind === "finished") {
-    after(async () => {
-      try {
-        const participant = await prisma.participant.findUnique({
-          where: { id: participantId },
-          select: { race: { select: { emailNotificationsEnabled: true } } },
-        });
-        if (participant?.race.emailNotificationsEnabled === false) return;
-
-        await notifyAdminsOfFinish(participantId, outcome.durationMs);
-      } catch (err) {
-        console.error("[finishRun] notification admins (email) échouée :", err);
-      }
-    });
+    sendFinishNotificationInBackground(participantId, outcome.durationMs);
   }
 
   return outcome;
@@ -152,6 +140,27 @@ async function runFinishTransaction(participantId: string, timestamp: Date): Pro
       durationMs: Number(row.duration_ms),
     };
   });
+}
+
+/**
+ * Lance la notification email en tâche de fond, sans bloquer la réponse
+ * HTTP du scan. Volontairement non "awaited" par l'appelant — cette
+ * fonction ne lève jamais d'exception elle-même (tout est intercepté).
+ */
+function sendFinishNotificationInBackground(participantId: string, durationMs: number): void {
+  (async () => {
+    try {
+      const participant = await prisma.participant.findUnique({
+        where: { id: participantId },
+        select: { race: { select: { emailNotificationsEnabled: true } } },
+      });
+      if (participant?.race.emailNotificationsEnabled === false) return;
+
+      await notifyAdminsOfFinish(participantId, durationMs);
+    } catch (err) {
+      console.error("[finishRun] notification admins (email) échouée :", err);
+    }
+  })();
 }
 
 function isUniqueViolation(err: unknown): boolean {
