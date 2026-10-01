@@ -19,6 +19,7 @@ export async function GET() {
       email: a.email,
       firstName: a.firstName,
       lastName: a.lastName,
+      emailNotificationsEnabled: a.emailNotificationsEnabled,
       createdAt: a.createdAt,
       racesCount: a._count.races,
       isSelf: a.id === session.adminId,

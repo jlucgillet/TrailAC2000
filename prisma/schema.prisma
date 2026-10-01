@@ -11,7 +11,7 @@ datasource db {
   url       = env("DATABASE_URL") // connexion "pooled" via PgBouncer (usage applicatif)
   directUrl = env("DIRECT_URL")   // connexion directe (utilisée par les migrations Prisma)
 }
-
+  
 enum RaceStatus {
   draft
   active
@@ -45,6 +45,7 @@ model Admin {
   lastName  	String?
   passwordHash String
   createdAt    DateTime @default(now())
+  emailNotificationsEnabled Boolean @default(false)
 
   races Race[]
   

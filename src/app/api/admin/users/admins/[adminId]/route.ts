@@ -8,6 +8,7 @@ const patchSchema = z.object({
   firstName: z.string().trim().max(100).optional(),
   lastName: z.string().trim().max(100).optional(),
   password: z.string().min(8, "8 caractères minimum.").optional().or(z.literal("")),
+  emailNotificationsEnabled: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -39,6 +40,7 @@ export async function PATCH(
     data: {
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
+      emailNotificationsEnabled: parsed.data.emailNotificationsEnabled,
       ...(passwordHash ? { passwordHash } : {}),
     },
   });
@@ -48,6 +50,7 @@ export async function PATCH(
     email: updated.email,
     firstName: updated.firstName,
     lastName: updated.lastName,
+    emailNotificationsEnabled: updated.emailNotificationsEnabled,
   });
 }
 

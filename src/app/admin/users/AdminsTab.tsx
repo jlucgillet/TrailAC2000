@@ -163,6 +163,11 @@ export function AdminsTab() {
                   <tr key={a.id}>
                     <td className="px-4 py-3">
                       {[a.firstName, a.lastName].filter(Boolean).join(" ") || "—"}
+                      {a.emailNotificationsEnabled && (
+                        <span className="ml-1.5" title="Notifications email activées">
+                          ✉️
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {a.email}
@@ -213,6 +218,9 @@ function EditAdminRow({
   const [firstName, setFirstName] = useState(admin.firstName ?? "");
   const [lastName, setLastName] = useState(admin.lastName ?? "");
   const [password, setPassword] = useState("");
+  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
+    !!admin.emailNotificationsEnabled
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,6 +237,7 @@ function EditAdminRow({
       body: JSON.stringify({
         firstName,
         lastName,
+        emailNotificationsEnabled,
         ...(password ? { password } : {}),
       }),
     });
@@ -272,6 +281,20 @@ function EditAdminRow({
             />
           </label>
         </div>
+
+        <label className="mt-3 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={emailNotificationsEnabled}
+            onChange={(e) => setEmailNotificationsEnabled(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            Recevoir un email à chaque arrivée d&rsquo;un concurrent (toutes courses confondues)
+            — envoyé à {admin.email}
+          </span>
+        </label>
+
         {error && <p className="mt-2 text-sm text-danger">{error}</p>}
       </td>
       <td className="px-4 py-4 align-bottom">

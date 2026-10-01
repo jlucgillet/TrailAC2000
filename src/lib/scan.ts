@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { prisma } from "./db";
+import { notifyAdminsOfFinish } from "./notifications";
 
 export type ScanOutcome =
   | { kind: "started"; startTimestamp: Date }
@@ -82,6 +83,20 @@ async function startRun(participantId: string, timestamp: Date): Promise<ScanOut
 }
 
 async function finishRun(participantId: string, timestamp: Date): Promise<ScanOutcome> {
+  const outcome = await runFinishTransaction(participantId, timestamp);
+
+  // Hors transaction (le résultat est déjà acquis en base) : ne doit
+  // jamais faire échouer le scan d'arrivée si l'envoi SMS a un problème.
+  if (outcome.kind === "finished") {
+    await notifyAdminsOfFinish(participantId, outcome.durationMs).catch((err) => {
+      console.error("[finishRun] notification admins (email) échouée :", err);
+    });
+  }
+
+  return outcome;
+}
+
+async function runFinishTransaction(participantId: string, timestamp: Date): Promise<ScanOutcome> {
   return prisma.$transaction(async (tx) => {
     const runningRun = await tx.run.findFirst({
       where: { participantId, status: "running" },
