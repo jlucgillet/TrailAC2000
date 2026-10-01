@@ -24,6 +24,8 @@ export function TrackDetail({
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   async function handleRename(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +40,26 @@ export function TrackDetail({
     setSaved(true);
   }
 
+  async function handleReplaceGpx(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`/api/admin/tracks/${trackId}`, { method: "POST", body: form });
+    const result = await res.json();
+    setUploading(false);
+    e.target.value = "";
+
+    if (!res.ok) {
+      setUploadError(result.error ?? "Erreur lors de l'import.");
+      return;
+    }
+    mutate();
+  }
+
   async function handleDelete() {
     if (!confirm(`Supprimer le parcours "${name}" ? Cette action est irréversible.`)) return;
     await fetch(`/api/admin/tracks/${trackId}`, { method: "DELETE" });
@@ -45,6 +67,10 @@ export function TrackDetail({
   }
 
   const points = data?.gpxData ? parseGpxPoints(data.gpxData) : [];
+  // Reflète la dernière version importée (data) une fois chargée ; les
+  // valeurs initiales (props) ne servent qu'au tout premier rendu.
+  const currentDistanceKm = data?.distanceKm ?? distanceKm;
+  const currentElevationGainM = data?.elevationGainM ?? elevationGainM;
 
   return (
     <div className="flex flex-col gap-8">
@@ -76,13 +102,13 @@ export function TrackDetail({
         <div className="rounded-xl border border-border bg-surface p-5">
           <p className="text-sm text-muted">Distance</p>
           <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-            {distanceKm.toFixed(1)} km
+            {currentDistanceKm.toFixed(1)} km
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-5">
           <p className="text-sm text-muted">Dénivelé positif</p>
           <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-            {Math.round(elevationGainM)} m
+            {Math.round(currentElevationGainM)} m
           </p>
         </div>
       </div>
@@ -95,7 +121,17 @@ export function TrackDetail({
 
       {!isLoading && <ShareSection trackId={trackId} data={data} onUpdated={() => mutate()} />}
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <label className="cursor-pointer rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink">
+          {uploading ? "Import en cours…" : "Remplacer le fichier GPX"}
+          <input
+            type="file"
+            accept=".gpx"
+            onChange={handleReplaceGpx}
+            className="hidden"
+            disabled={uploading}
+          />
+        </label>
         <a
           href={`/api/admin/tracks/${trackId}/download`}
           className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
@@ -109,6 +145,11 @@ export function TrackDetail({
           Supprimer ce parcours
         </button>
       </div>
+      {uploadError && <p className="text-sm text-danger">{uploadError}</p>}
+      <p className="text-xs text-muted">
+        Remplacer le fichier recalcule automatiquement la distance et le dénivelé affichés
+        ci-dessus, ainsi que la carte.
+      </p>
     </div>
   );
 }

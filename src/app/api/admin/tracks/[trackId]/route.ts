@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireAdmin } from "@/lib/requireAdmin";
+import { parseGpxPoints, computeGpxStats } from "@/lib/gpx";
 
 export async function GET(
   _request: NextRequest,
@@ -54,6 +55,58 @@ export async function PATCH(
     name: updated.name,
     shareEnabled: updated.shareEnabled,
     shareToken: updated.shareToken,
+  });
+}
+
+/**
+ * Remplace le fichier GPX d'un parcours existant — recalcule distance et
+ * dénivelé à partir du nouveau fichier. Le nom et les réglages de partage
+ * ne sont pas touchés.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { trackId: string } }
+) {
+  const { session, response } = await requireAdmin();
+  if (!session) return response;
+
+  const track = await prisma.track.findUnique({ where: { id: params.trackId } });
+  if (!track) return NextResponse.json({ error: "Parcours introuvable." }, { status: 404 });
+
+  const form = await request.formData();
+  const file = form.get("file");
+  if (!(file instanceof File)) {
+    return NextResponse.json({ error: "Fichier GPX manquant." }, { status: 400 });
+  }
+
+  const text = await file.text();
+  if (!text.includes("<gpx") && !text.includes("<?xml")) {
+    return NextResponse.json({ error: "Ce fichier ne semble pas être un GPX valide." }, { status: 400 });
+  }
+
+  const points = parseGpxPoints(text);
+  if (points.length < 2) {
+    return NextResponse.json(
+      { error: "Aucune trace exploitable trouvée dans ce fichier." },
+      { status: 400 }
+    );
+  }
+
+  const stats = computeGpxStats(points);
+
+  const updated = await prisma.track.update({
+    where: { id: track.id },
+    data: {
+      gpxData: text,
+      distanceKm: stats.distanceKm,
+      elevationGainM: stats.elevationGainM,
+    },
+  });
+
+  return NextResponse.json({
+    distanceKm: updated.distanceKm,
+    elevationGainM: updated.elevationGainM,
+    pointsCount: points.length,
   });
 }
 
