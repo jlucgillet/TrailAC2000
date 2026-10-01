@@ -48,21 +48,34 @@ export function AnyScanner() {
     }
   }
 
+  // Dès qu'un scan réussit (départ, déjà en course, ou arrivée), la caméra
+  // disparaît complètement : seuls le résultat et les boutons restent
+  // affichés. En cas d'échec, le scanner reste visible pour réessayer.
+  const scanSucceeded =
+    result?.kind === "started" ||
+    result?.kind === "already_started" ||
+    result?.kind === "finished" ||
+    result?.kind === "already_finished";
+
   return (
     <div className="flex flex-col items-center gap-6 py-4 text-center">
-      <div>
-        <p className="text-sm text-muted">Scanner</p>
-        <h1 className="font-display text-2xl font-semibold">
-          Visez n&rsquo;importe quel QR code DÉPART ou ARRIVÉE
-        </h1>
-        <p className="mt-2 text-sm text-muted">
-          La course est reconnue automatiquement à partir du QR code scanné.
-        </p>
-      </div>
+      {!scanSucceeded && (
+        <>
+          <div>
+            <p className="text-sm text-muted">Scanner</p>
+            <h1 className="font-display text-2xl font-semibold">
+              Visez n&rsquo;importe quel QR code DÉPART ou ARRIVÉE
+            </h1>
+            <p className="mt-2 text-sm text-muted">
+              La course est reconnue automatiquement à partir du QR code scanné.
+            </p>
+          </div>
 
-      <QrScanner paused={loading || result !== null} onDecoded={handleDecoded} />
+          <QrScanner paused={loading || result !== null} onDecoded={handleDecoded} />
 
-      {loading && <p className="text-muted">Traitement…</p>}
+          {loading && <p className="text-muted">Traitement…</p>}
+        </>
+      )}
 
       {result && (
         <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-5">
@@ -81,12 +94,14 @@ export function AnyScanner() {
               {result.kind === "error" ? result.message : MESSAGES[result.kind]}
             </p>
           )}
-          <button
-            onClick={() => setResult(null)}
-            className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-          >
-            Scanner un autre QR code
-          </button>
+          {!scanSucceeded && (
+            <button
+              onClick={() => setResult(null)}
+              className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+            >
+              Réessayer
+            </button>
+          )}
         </div>
       )}
 
