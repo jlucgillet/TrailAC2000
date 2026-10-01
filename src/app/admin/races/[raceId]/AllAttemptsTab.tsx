@@ -22,7 +22,7 @@ const STATUS_OPTIONS = [
   { value: "disqualified", label: "Disqualifié" },
 ];
 
-type SortKey = "bibNumber" | "name" | "attemptNumber" | "durationMs" | "status";
+type SortKey = "bibNumber" | "name" | "phone" | "attemptNumber" | "durationMs" | "status";
 
 function compare(a: unknown, b: unknown): number {
   if (a === null || a === undefined) return b === null || b === undefined ? 0 : 1;
@@ -149,6 +149,7 @@ export function AllAttemptsTab({ raceId }: { raceId: string }) {
             <tr>
               <SortHeader label="Dossard" sortKeyFor="bibNumber" />
               <SortHeader label="Concurrent" sortKeyFor="name" />
+              <SortHeader label="Téléphone" sortKeyFor="phone" />
               <SortHeader label="Essai" sortKeyFor="attemptNumber" />
               <th className="px-4 py-3 font-medium">Départ</th>
               <th className="px-4 py-3 font-medium">Arrivée</th>
@@ -162,6 +163,7 @@ export function AllAttemptsTab({ raceId }: { raceId: string }) {
               <tr key={r.runId}>
                 <td className="px-4 py-3 tabular-nums">{r.bibNumber ?? "—"}</td>
                 <td className="px-4 py-3">{r.displayName}</td>
+                <td className="px-4 py-3 tabular-nums text-muted">{r.phone ?? "—"}</td>
                 <td className="px-4 py-3 tabular-nums text-muted">#{r.attemptNumber}</td>
                 <td className="px-4 py-3 text-muted">{formatFullDateTime(r.startTimestamp)}</td>
                 <td className="px-4 py-3 text-muted">{formatFullDateTime(r.finishTimestamp)}</td>
@@ -182,7 +184,7 @@ export function AllAttemptsTab({ raceId }: { raceId: string }) {
             ))}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted">
                   Aucun essai pour le moment.
                 </td>
               </tr>
