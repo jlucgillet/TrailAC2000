@@ -14,7 +14,8 @@ const STATUS_LABEL: Record<string, string> = {
   disqualified: "Disqualifié",
 };
 
-function formatDateTime(iso: string): string {
+function formatFullDateTime(iso: string | null): string {
+  if (!iso) return "—";
   const d = new Date(iso);
   return `${d.toLocaleDateString("fr-FR")} à ${d.toLocaleTimeString("fr-FR", {
     hour: "2-digit",
@@ -22,92 +23,53 @@ function formatDateTime(iso: string): string {
   })}`;
 }
 
-export function RaceResultsHistory({
-  raceId,
-  raceName,
-  raceStatus,
-}: {
-  raceId: string;
-  raceName: string;
-  raceStatus: string;
-}) {
-  const { data, isLoading } = useSWR(`/api/athlete/races/${raceId}/results`, fetcher, {
-    refreshInterval: 10000,
-  });
+export function RaceResultsHistory({ raceId }: { raceId: string }) {
+  const { data, isLoading } = useSWR(`/api/athlete/races/${raceId}/results`, fetcher);
 
   const attempts: any[] = data?.attempts ?? [];
-  const bestDurationMs: number | null = data?.bestDurationMs ?? null;
+  // Les essais les plus récents en premier.
+  const sorted = [...attempts].sort((a, b) => b.attemptNumber - a.attemptNumber);
 
   return (
-    <div className="flex flex-col gap-6 py-4">
-      <div>
-        <p className="text-sm text-muted">Mes résultats</p>
-        <h1 className="font-display text-3xl font-semibold">{raceName}</h1>
-      </div>
+    <div className="mx-auto max-w-2xl px-4 py-8">
+      <Link href="/mon-espace" className="text-sm text-muted underline">
+        ← Retour à mon espace
+      </Link>
 
-      {bestDurationMs !== null && (
-        <div className="rounded-xl border border-accent/40 bg-accent/5 p-4">
-          <p className="text-sm text-muted">Meilleur temps</p>
-          <p className="chrono-digits text-3xl font-semibold text-accent">
-            {formatDurationMs(bestDurationMs)}
-          </p>
-        </div>
-      )}
-
-      {raceStatus === "active" && (
-        <Link
-          href={`/mon-espace/course/${raceId}`}
-          className="w-fit rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-        >
-          Nouvel essai — Scanner
-        </Link>
-      )}
+      <p className="mt-4 text-sm text-muted">Mes résultats</p>
+      <h1 className="mb-6 font-display text-3xl font-semibold">
+        {data?.race?.name ?? "…"}
+      </h1>
 
       {isLoading ? (
         <p className="text-muted">Chargement…</p>
-      ) : attempts.length === 0 ? (
-        <p className="text-muted">Aucun essai enregistré pour cette course.</p>
+      ) : sorted.length === 0 ? (
+        <p className="text-muted">Aucun essai pour le moment sur cette course.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full min-w-[480px] text-left text-sm">
-            <thead className="bg-surface text-muted">
-              <tr>
-                <th className="px-4 py-3 font-medium">Essai</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Statut</th>
-                <th className="px-4 py-3 font-medium">Temps</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {attempts.map((a) => {
-                const isBest =
-                  bestDurationMs !== null && a.durationMs === bestDurationMs && a.status === "finished";
-                return (
-                  <tr key={a.attemptNumber} className={isBest ? "bg-accent/5" : undefined}>
-                    <td className="px-4 py-3 tabular-nums">{a.attemptNumber}</td>
-                    <td className="px-4 py-3 text-muted">
-                      {a.finishTimestamp
-                        ? formatDateTime(a.finishTimestamp)
-                        : a.startTimestamp
-                        ? formatDateTime(a.startTimestamp)
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-3">{STATUS_LABEL[a.status] ?? a.status}</td>
-                    <td className="px-4 py-3 tabular-nums font-medium">
-                      {a.durationMs !== null ? formatDurationMs(a.durationMs) : "—"}
-                      {isBest && <span className="ml-2 text-xs text-accent">record</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-3">
+          {sorted.map((a) => (
+            <div
+              key={a.runId}
+              className={`rounded-xl border p-4 ${
+                a.isBest ? "border-accent bg-accent/5" : "border-border bg-surface"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-medium">Essai n°{a.attemptNumber}</p>
+                {a.isBest && (
+                  <span className="rounded-full bg-accent/15 px-2.5 py-0.5 text-xs font-semibold text-accent">
+                    Record
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-sm text-muted">{formatFullDateTime(a.startTimestamp)}</p>
+              <p className="chrono-digits mt-2 text-3xl font-semibold">
+                {a.durationMs !== null ? formatDurationMs(a.durationMs) : STATUS_LABEL[a.status] ?? a.status}
+              </p>
+            </div>
+          ))}
         </div>
       )}
-
-      <Link href="/mon-espace" className="text-sm text-muted underline">
-        Retour à mon espace
-      </Link>
     </div>
   );
 }

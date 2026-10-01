@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAthleteSession } from "@/lib/session";
 
+/**
+ * Historique COMPLET des essais du concurrent connecté pour cette course
+ * (contrairement aux classements, qui ne gardent que le meilleur essai de
+ * chaque concurrent) — une course pouvant être courue plusieurs fois, la
+ * personne doit pouvoir consulter chacun de ses essais, pas seulement le
+ * dernier ni seulement le meilleur.
+ */
 export async function GET(
   _request: Request,
   { params }: { params: { raceId: string } }
@@ -20,26 +27,36 @@ export async function GET(
     where: {
       raceId_phoneNormalized: { raceId: race.id, phoneNormalized: session.phoneNormalized },
     },
-    include: {
-      runs: { orderBy: { attemptNumber: "asc" } },
-    },
+    include: { runs: { orderBy: { attemptNumber: "desc" } } },
   });
 
-  const attempts = (participant?.runs ?? []).map((r) => ({
-    attemptNumber: r.attemptNumber,
-    status: r.status,
-    startTimestamp: r.startTimestamp,
-    finishTimestamp: r.finishTimestamp,
-    durationMs: r.durationMs !== null ? Number(r.durationMs) : null,
-  }));
+  if (!participant) {
+    return NextResponse.json({
+      race: { id: race.id, name: race.name },
+      attempts: [],
+    });
+  }
 
-  const bestDurationMs = attempts
-    .filter((a) => a.status === "finished" && a.durationMs !== null)
-    .reduce<number | null>((best, a) => (best === null || a.durationMs! < best ? a.durationMs! : best), null);
+  const bestDurationMs = participant.runs
+    .filter((r) => r.status === "finished" && r.durationMs !== null)
+    .reduce<number | null>((min, r) => {
+      const d = Number(r.durationMs);
+      return min === null || d < min ? d : min;
+    }, null);
 
   return NextResponse.json({
-    race: { id: race.id, name: race.name, status: race.status },
-    attempts,
-    bestDurationMs,
+    race: { id: race.id, name: race.name },
+    attempts: participant.runs.map((r) => {
+      const durationMs = r.durationMs !== null ? Number(r.durationMs) : null;
+      return {
+        runId: r.id,
+        attemptNumber: r.attemptNumber,
+        status: r.status,
+        startTimestamp: r.startTimestamp,
+        finishTimestamp: r.finishTimestamp,
+        durationMs,
+        isBest: bestDurationMs !== null && durationMs === bestDurationMs,
+      };
+    }),
   });
 }

@@ -1,92 +1,65 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 
+/**
+ * Scanner caméra (html5-qrcode). Le cadre de visée affiché à l'écran est
+ * calculé et dessiné par la bibliothèque elle-même à partir des dimensions
+ * réelles du flux vidéo (callback qrbox dynamique), plutôt qu'un calque
+ * positionné "à la main" en CSS par-dessus la vidéo — ce qui évite tout
+ * décalage entre le cadre visible et la zone réellement analysée.
+ *
+ * Le conteneur reste toujours monté et visible (jamais display:none),
+ * sinon la bibliothèque calcule une taille de vidéo incorrecte au
+ * démarrage. useId() (pas Math.random()) pour un id stable entre le rendu
+ * serveur et client.
+ */
 export function QrScanner({
-  paused,
   onDecoded,
+  paused = false,
 }: {
-  paused: boolean;
   onDecoded: (decodedText: string) => void;
+  paused?: boolean;
 }) {
-  // useId() (et non Math.random()) : garantit le même identifiant entre le
-  // rendu serveur et l'hydratation client.
-  const reactId = useId().replace(/:/g, "");
-  const containerId = useRef(`qr-reader-${reactId}`);
+  const elementId = `qr-scanner-${useId().replace(/[:]/g, "")}`;
   const scannerRef = useRef<import("html5-qrcode").Html5Qrcode | null>(null);
-  const [phase, setPhase] = useState<"starting" | "running" | "error">("starting");
-  const [error, setError] = useState<string | null>(null);
-
   const onDecodedRef = useRef(onDecoded);
   onDecodedRef.current = onDecoded;
 
   useEffect(() => {
     let cancelled = false;
 
-    async function waitForElement(id: string, timeoutMs = 4000): Promise<boolean> {
-      const started = Date.now();
-      while (!document.getElementById(id)) {
-        if (cancelled) return false;
-        if (Date.now() - started > timeoutMs) return false;
-        await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
-      }
-      return true;
-    }
-
     async function start() {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      if (cancelled) return;
+
+      const scanner = new Html5Qrcode(elementId, { verbose: false });
+      scannerRef.current = scanner;
+
       try {
-        const { Html5Qrcode } = await import("html5-qrcode");
-
-        const found = await waitForElement(containerId.current);
-        if (cancelled) return;
-        if (!found) {
-          throw new Error("Zone d'affichage caméra introuvable dans la page.");
-        }
-
-        const scanner = new Html5Qrcode(containerId.current);
-        scannerRef.current = scanner;
-
         await scanner.start(
           { facingMode: "environment" },
-          { fps: 10, qrbox: 240 },
+          {
+            fps: 10,
+            // Cadre carré, calculé par la bibliothèque à partir de la
+            // taille réelle du flux vidéo affiché — toujours centré et
+            // juste à l'échelle, quelle que soit la taille d'écran.
+            qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.7);
+              return { width: size, height: size };
+            },
+            aspectRatio: 1,
+          },
           (decodedText) => {
             onDecodedRef.current(decodedText);
           },
           () => {
-            // Erreurs de décodage image par image : ignorées volontairement,
-            // c'est le comportement normal tant qu'aucun QR n'est dans le cadre.
+            // Échecs de décodage image par image : normal et très
+            // fréquent tant que le QR code n'est pas visé, on les ignore.
           }
         );
-        if (!cancelled) setPhase("running");
-      } catch (err: unknown) {
-        if (cancelled) return;
-        setPhase("error");
-
-        let name = "";
-        let message = "";
-        if (err instanceof Error) {
-          name = err.name;
-          message = err.message;
-        } else if (typeof err === "string") {
-          message = err;
-        } else {
-          message = JSON.stringify(err);
-        }
-
-        let friendly: string;
-        if (name === "NotAllowedError") {
-          friendly =
-            "Accès à la caméra refusé. Autorisez l'accès dans les réglages de votre navigateur, puis rechargez la page.";
-        } else if (name === "NotFoundError" || name === "OverconstrainedError") {
-          friendly = "Aucune caméra arrière détectée sur cet appareil.";
-        } else if (typeof window !== "undefined" && window.location.protocol !== "https:") {
-          friendly = "Le scan caméra nécessite une connexion sécurisée (https).";
-        } else {
-          friendly =
-            "Impossible d'activer la caméra. Utilisez plutôt le scan classique via l'appareil photo natif de votre téléphone.";
-        }
-
-        setError(message ? `${friendly} (détail : ${message})` : friendly);
+      } catch (err) {
+        console.error("Impossible de démarrer la caméra :", err);
       }
     }
 
@@ -95,21 +68,23 @@ export function QrScanner({
     return () => {
       cancelled = true;
       const scanner = scannerRef.current;
+      scannerRef.current = null;
       if (scanner) {
         scanner
           .stop()
           .then(() => scanner.clear())
           .catch(() => {
-            /* déjà arrêté */
+            // La caméra a parfois déjà été arrêtée (changement rapide de
+            // page) : rien à faire de plus dans ce cas.
           });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [elementId]);
 
   useEffect(() => {
     const scanner = scannerRef.current;
-    if (!scanner || phase !== "running") return;
+    if (!scanner) return;
     try {
       if (paused) {
         scanner.pause(true);
@@ -117,32 +92,14 @@ export function QrScanner({
         scanner.resume();
       }
     } catch {
-      // Raffinement d'UX seulement : jamais laisser une exception ici
-      // faire planter toute la page.
+      // resume()/pause() peuvent échouer si la caméra n'a pas encore fini
+      // de démarrer — sans conséquence, l'état se resynchronise au rendu suivant.
     }
-  }, [paused, phase]);
+  }, [paused]);
 
   return (
-    <div className="mx-auto w-full max-w-sm">
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-border bg-surface">
-        {/* Toujours monté avec une vraie taille (jamais display:none) :
-            html5-qrcode calcule la taille de la vidéo au moment de start(),
-            et une zone cachée à cet instant reste ensuite invisible même
-            une fois "affichée". */}
-        <div id={containerId.current} className="h-full w-full" />
-
-        {phase === "starting" && (
-          <div className="absolute inset-0 flex items-center justify-center bg-surface">
-            <p className="text-sm text-muted">Activation de la caméra…</p>
-          </div>
-        )}
-      </div>
-
-      {phase === "error" && error && (
-        <div className="mt-4 rounded-2xl border border-border bg-surface p-4 text-center">
-          <p className="mb-3 text-sm text-danger">{error}</p>
-        </div>
-      )}
+    <div className="mx-auto w-full max-w-sm overflow-hidden rounded-xl border border-border bg-bg">
+      <div id={elementId} className="w-full" />
     </div>
   );
 }

@@ -1,9 +1,8 @@
-import { notFound, redirect } from "next/navigation";
-import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 import { getAthleteSession } from "@/lib/session";
 import { RaceResultsHistory } from "./RaceResultsHistory";
 
-export default async function AthleteRaceResultsPage({
+export default async function RaceResultsPage({
   params,
 }: {
   params: { raceId: string };
@@ -13,8 +12,5 @@ export default async function AthleteRaceResultsPage({
     redirect("/mon-espace/login");
   }
 
-  const race = await prisma.race.findUnique({ where: { id: params.raceId } });
-  if (!race) notFound();
-
-  return <RaceResultsHistory raceId={race.id} raceName={race.name} raceStatus={race.status} />;
+  return <RaceResultsHistory raceId={params.raceId} />;
 }
