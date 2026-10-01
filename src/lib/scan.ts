@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { unstable_after as after } from "next/server";
 import { prisma } from "./db";
 import { notifyAdminsOfFinish } from "./notifications";
 
@@ -85,11 +86,23 @@ async function startRun(participantId: string, timestamp: Date): Promise<ScanOut
 async function finishRun(participantId: string, timestamp: Date): Promise<ScanOutcome> {
   const outcome = await runFinishTransaction(participantId, timestamp);
 
-  // Hors transaction (le résultat est déjà acquis en base) : ne doit
-  // jamais faire échouer le scan d'arrivée si l'envoi SMS a un problème.
+  // L'envoi d'email ne doit JAMAIS ralentir la réponse du scan (l'envoi
+  // SMTP peut prendre plusieurs secondes). unstable_after() programme ce
+  // travail pour APRÈS que la réponse soit déjà repartie vers le
+  // concurrent, au lieu de l'attendre ici avec un simple `await`.
   if (outcome.kind === "finished") {
-    await notifyAdminsOfFinish(participantId, outcome.durationMs).catch((err) => {
-      console.error("[finishRun] notification admins (email) échouée :", err);
+    after(async () => {
+      try {
+        const participant = await prisma.participant.findUnique({
+          where: { id: participantId },
+          select: { race: { select: { emailNotificationsEnabled: true } } },
+        });
+        if (participant?.race.emailNotificationsEnabled === false) return;
+
+        await notifyAdminsOfFinish(participantId, outcome.durationMs);
+      } catch (err) {
+        console.error("[finishRun] notification admins (email) échouée :", err);
+      }
     });
   }
 

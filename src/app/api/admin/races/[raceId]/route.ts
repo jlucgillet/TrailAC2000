@@ -27,6 +27,7 @@ const updateSchema = z.object({
   timezone: z.string().optional(),
   status: z.enum(["draft", "active", "closed", "archived"]).optional(),
   publicResultsEnabled: z.boolean().optional(),
+  emailNotificationsEnabled: z.boolean().optional(),
   openRegistration: z.boolean().optional(),
 });
 

@@ -10,6 +10,7 @@ type Race = {
   location: string | null;
   status: "draft" | "active" | "closed" | "archived";
   publicResultsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
   openRegistration: boolean;
 };
 
@@ -164,6 +165,28 @@ export function SettingsTab({
           <span>
             Autoriser la consultation publique des résultats (sans numéro de téléphone) à l&rsquo;adresse{" "}
             <code className="text-muted">/results/{race.id}</code>
+          </span>
+        </label>
+      </section>
+
+      <section>
+        <h3 className="mb-3 font-display text-xl font-semibold">Notifications email</h3>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={race.emailNotificationsEnabled}
+            onChange={(e) => updateField({ emailNotificationsEnabled: e.target.checked })}
+            className="mt-1"
+          />
+          <span>
+            <span className="block">
+              Prévenir par email les administrateurs concernés à chaque arrivée sur cette course
+            </span>
+            <span className="block text-sm text-muted">
+              Désactive-le pour une course à fort volume de scans, ou pendant des tests, si tu
+              veux éviter l&rsquo;envoi systématique d&rsquo;emails. L&rsquo;envoi n&rsquo;a de
+              toute façon aucun effet sur la vitesse d&rsquo;enregistrement du chrono lui-même.
+            </span>
           </span>
         </label>
       </section>

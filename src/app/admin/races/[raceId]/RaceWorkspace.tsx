@@ -18,6 +18,7 @@ type Race = {
   distanceKm: number | null;
   elevationGainM: number | null;
   publicResultsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
   openRegistration: boolean;
 };
 
