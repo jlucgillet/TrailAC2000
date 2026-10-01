@@ -63,10 +63,9 @@ export function ClassicScanner({ raceId, raceName }: { raceId: string; raceName:
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-10 text-center">
       <div>
         <p className="text-sm text-muted">{raceName}</p>
-        <h1 className="font-display text-2xl font-semibold">Vise le QR code DÉPART</h1>
+        <h1 className="font-display text-2xl font-semibold">Vise un QR code DÉPART ou ARRIVÉE</h1>
         <p className="mt-2 max-w-xs text-sm text-muted">
-          Tu es identifié. Scanne maintenant le QR code DÉPART pour lancer ton chronomètre — ce
-          scan-ci compte, contrairement au précédent.
+          Tu es identifié. Ce scan-ci compte, contrairement au précédent.
         </p>
       </div>
 

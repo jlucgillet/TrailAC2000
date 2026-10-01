@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
-import { getAthleteSession } from "@/lib/session";
+import { getAthleteSession, createParticipantSession } from "@/lib/session";
 import { performScan } from "@/lib/scan";
 import { isRateLimited, hashIp } from "@/lib/rateLimit";
 import { canRegisterForRace } from "@/lib/registration";
@@ -97,6 +97,15 @@ export async function POST(request: NextRequest) {
       firstName: session.firstName,
       lastName: session.lastName,
     },
+  });
+
+  // Le composant Chrono (affiché juste après un scan réussi) s'appuie sur
+  // la session participant "classique" pour savoir qui regarder — on
+  // l'ouvre ici aussi, même si cette requête vient du scanner générique.
+  await createParticipantSession({
+    participantId: participant.id,
+    raceId: race.id,
+    phoneNormalized: session.phoneNormalized,
   });
 
   const outcome = await performScan(participant.id, race.id, checkpoint);

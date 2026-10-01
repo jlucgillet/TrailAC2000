@@ -3,21 +3,18 @@
 import { useState } from "react";
 import Link from "next/link";
 import { QrScanner } from "@/components/QrScanner";
-import { formatDurationMs } from "@/lib/time";
+import { Chrono } from "@/components/Chrono";
 
 type ScanResult =
-  | { kind: "started"; raceName: string }
-  | { kind: "finished"; durationMs: number; raceName: string }
-  | { kind: "already_started"; raceName: string }
-  | { kind: "already_finished"; durationMs: number; raceName: string }
-  | { kind: "no_start"; raceName: string }
-  | { kind: "race_not_active"; raceName: string }
+  | { kind: "started"; raceId: string }
+  | { kind: "finished"; durationMs: number; raceId: string }
+  | { kind: "already_started"; raceId: string }
+  | { kind: "already_finished"; durationMs: number; raceId: string }
+  | { kind: "no_start"; raceId: string }
+  | { kind: "race_not_active"; raceId: string }
   | { kind: "error"; message: string };
 
 const MESSAGES: Record<string, string> = {
-  started: "Départ enregistré, bon courage !",
-  already_started: "Tu as déjà commencé cette course.",
-  already_finished: "Ta course est déjà terminée.",
   no_start: "Aucun départ enregistré pour cette course — scanne d'abord le QR code DÉPART.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
 };
@@ -39,7 +36,7 @@ export function AnyScanner() {
       if (!res.ok) {
         setResult({ kind: "error", message: data.error ?? "Erreur lors du scan." });
       } else {
-        setResult({ ...data.outcome, raceName: data.raceName });
+        setResult({ ...data.outcome, raceId: data.raceId });
       }
     } catch {
       setResult({ kind: "error", message: "Connexion impossible. Réessayez." });
@@ -48,61 +45,48 @@ export function AnyScanner() {
     }
   }
 
-  // Dès qu'un scan réussit (départ, déjà en course, ou arrivée), la caméra
-  // disparaît complètement : seuls le résultat et les boutons restent
-  // affichés. En cas d'échec, le scanner reste visible pour réessayer.
+  // Même comportement que le scanner par course : dès qu'un scan réussit,
+  // la caméra disparaît et le chrono prend sa place directement.
   const scanSucceeded =
     result?.kind === "started" ||
     result?.kind === "already_started" ||
     result?.kind === "finished" ||
     result?.kind === "already_finished";
 
+  if (scanSucceeded) {
+    return <Chrono raceId={result.raceId} />;
+  }
+
   return (
     <div className="flex flex-col items-center gap-6 py-4 text-center">
-      {!scanSucceeded && (
-        <>
-          <div>
-            <p className="text-sm text-muted">Scanner</p>
-            <h1 className="font-display text-2xl font-semibold">
-              Visez n&rsquo;importe quel QR code DÉPART ou ARRIVÉE
-            </h1>
-            <p className="mt-2 text-sm text-muted">
-              La course est reconnue automatiquement à partir du QR code scanné.
-            </p>
-          </div>
+      <div>
+        <p className="text-sm text-muted">Scanner</p>
+        <h1 className="font-display text-2xl font-semibold">
+          Visez n&rsquo;importe quel QR code DÉPART ou ARRIVÉE
+        </h1>
+        <p className="mt-2 text-sm text-muted">
+          La course est reconnue automatiquement à partir du QR code scanné.
+        </p>
+      </div>
 
-          <QrScanner paused={loading || result !== null} onDecoded={handleDecoded} />
+      <QrScanner paused={loading || result !== null} onDecoded={handleDecoded} />
 
-          {loading && <p className="text-muted">Traitement…</p>}
-        </>
+      {loading && <p className="text-muted">Traitement…</p>}
+
+      {result && result.kind === "error" && (
+        <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-5">
+          <p className="text-danger">{result.message}</p>
+          <button
+            onClick={() => setResult(null)}
+            className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+          >
+            Réessayer
+          </button>
+        </div>
       )}
 
-      {result && (
-        <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-5">
-          {result.kind !== "error" && (
-            <p className="mb-2 text-sm text-muted">{result.raceName}</p>
-          )}
-          {result.kind === "finished" || result.kind === "already_finished" ? (
-            <>
-              <p className="mb-1 text-sm text-accent">Course terminée</p>
-              <p className="chrono-digits text-4xl font-semibold">
-                {formatDurationMs(result.durationMs)}
-              </p>
-            </>
-          ) : (
-            <p className={result.kind === "error" ? "text-danger" : "text-ink"}>
-              {result.kind === "error" ? result.message : MESSAGES[result.kind]}
-            </p>
-          )}
-          {!scanSucceeded && (
-            <button
-              onClick={() => setResult(null)}
-              className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-            >
-              Réessayer
-            </button>
-          )}
-        </div>
+      {result && result.kind !== "error" && MESSAGES[result.kind] && (
+        <p className="max-w-sm text-sm text-muted">{MESSAGES[result.kind]}</p>
       )}
 
       <Link href="/mon-espace" className="mt-8 inline-block rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-bg">
