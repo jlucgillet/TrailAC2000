@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { QrScanner } from "@/components/QrScanner";
-import { formatDurationMs } from "@/lib/time";
+import { Chrono } from "@/components/Chrono";
 
 type ScanResult =
   | { kind: "started" }
@@ -16,15 +14,11 @@ type ScanResult =
   | { kind: "error"; message: string };
 
 const MESSAGES: Record<string, string> = {
-  started: "Départ enregistré, bon courage !",
-  already_started: "Tu as déjà commencé cette course.",
-  already_finished: "Ta course est déjà terminée.",
   no_start: "Aucun départ enregistré pour cette course — scanne d'abord le QR code DÉPART.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
 };
 
 export function ClassicScanner({ raceId, raceName }: { raceId: string; raceName: string }) {
-  const router = useRouter();
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +44,20 @@ export function ClassicScanner({ raceId, raceName }: { raceId: string; raceName:
     }
   }
 
-  const startedOrRunning = result?.kind === "started" || result?.kind === "already_started";
+  // Dès que le scan a réussi (départ lancé, déjà en course, ou même déjà
+  // arrivé), le scanner disparaît et le chrono prend sa place directement
+  // sur cet écran — plus besoin d'un clic supplémentaire pour le voir.
+  // "no_start" et "race_not_active" ne sont PAS des départs réussis : on
+  // reste sur le scanner pour permettre de réessayer.
+  const scanSucceeded =
+    result?.kind === "started" ||
+    result?.kind === "already_started" ||
+    result?.kind === "finished" ||
+    result?.kind === "already_finished";
+
+  if (scanSucceeded) {
+    return <Chrono raceId={raceId} />;
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-10 text-center">
@@ -67,43 +74,21 @@ export function ClassicScanner({ raceId, raceName }: { raceId: string; raceName:
 
       {loading && <p className="text-muted">Traitement…</p>}
 
-      {result && (
+      {result && result.kind === "error" && (
         <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-5">
-          {result.kind === "finished" || result.kind === "already_finished" ? (
-            <>
-              <p className="mb-1 text-sm text-accent">Course terminée</p>
-              <p className="chrono-digits text-4xl font-semibold">
-                {formatDurationMs(result.durationMs)}
-              </p>
-            </>
-          ) : (
-            <p className={result.kind === "error" ? "text-danger" : "text-ink"}>
-              {result.kind === "error" ? result.message : MESSAGES[result.kind]}
-            </p>
-          )}
-
-          <div className="mt-4 flex flex-col gap-2">
-            {startedOrRunning && (
-              <button
-                onClick={() => router.push(`/course/${raceId}/run`)}
-                className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-              >
-                Voir mon chrono
-              </button>
-            )}
-            <button
-              onClick={() => setResult(null)}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
-            >
-              Scanner un autre QR code
-            </button>
-          </div>
+          <p className="text-danger">{result.message}</p>
+          <button
+            onClick={() => setResult(null)}
+            className="mt-4 rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+          >
+            Réessayer
+          </button>
         </div>
       )}
 
-      <Link href={`/course/${raceId}/run`} className="text-sm text-muted underline">
-        Voir mon chrono
-      </Link>
+      {result && result.kind !== "error" && MESSAGES[result.kind] && (
+        <p className="max-w-sm text-sm text-muted">{MESSAGES[result.kind]}</p>
+      )}
     </div>
   );
 }

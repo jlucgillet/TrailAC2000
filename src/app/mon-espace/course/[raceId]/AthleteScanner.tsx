@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { QrScanner } from "@/components/QrScanner";
-import { formatDurationMs } from "@/lib/time";
+import { Chrono } from "@/components/Chrono";
 
 type ScanResult =
   | { kind: "started" }
@@ -15,9 +15,6 @@ type ScanResult =
   | { kind: "error"; message: string };
 
 const MESSAGES: Record<string, string> = {
-  started: "Départ enregistré, bon courage !",
-  already_started: "Tu as déjà commencé cette course.",
-  already_finished: "Ta course est déjà terminée.",
   no_start: "Aucun départ enregistré pour cette course — scanne d'abord le QR code DÉPART.",
   race_not_active: "Cette course n'est pas (ou plus) ouverte au chronométrage.",
 };
@@ -70,6 +67,20 @@ export function AthleteScanner({
     }
   }
 
+  // Dès que le scan a réussi (départ lancé, déjà en course, ou déjà
+  // arrivé), le scanner disparaît et le chrono prend sa place directement
+  // sur cet écran. "no_start" et "race_not_active" ne sont pas des scans
+  // réussis : on reste sur le scanner pour permettre de réessayer.
+  const scanSucceeded =
+    result?.kind === "started" ||
+    result?.kind === "already_started" ||
+    result?.kind === "finished" ||
+    result?.kind === "already_finished";
+
+  if (scanSucceeded) {
+    return <Chrono raceId={raceId} />;
+  }
+
   return (
     <div className="flex flex-col items-center gap-6 py-4 text-center">
       <div>
@@ -81,27 +92,20 @@ export function AthleteScanner({
 
       {loading && <p className="text-muted">Traitement…</p>}
 
-      {result && (
+      {result && result.kind === "error" && (
         <div className="w-full max-w-sm rounded-xl border border-border bg-surface p-5">
-          {result.kind === "finished" || result.kind === "already_finished" ? (
-            <>
-              <p className="mb-1 text-sm text-accent">Course terminée</p>
-              <p className="chrono-digits text-4xl font-semibold">
-                {formatDurationMs(result.durationMs)}
-              </p>
-            </>
-          ) : (
-            <p className={result.kind === "error" ? "text-danger" : "text-ink"}>
-              {result.kind === "error" ? result.message : MESSAGES[result.kind]}
-            </p>
-          )}
+          <p className="text-danger">{result.message}</p>
           <button
             onClick={() => setResult(null)}
             className="mt-4 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
           >
-            Scanner un autre QR code
+            Réessayer
           </button>
         </div>
+      )}
+
+      {result && result.kind !== "error" && MESSAGES[result.kind] && (
+        <p className="max-w-sm text-sm text-muted">{MESSAGES[result.kind]}</p>
       )}
 
       <Link href="/mon-espace" className="mt-8 inline-block rounded-lg bg-accent px-6 py-3 text-sm font-semibold text-bg">
