@@ -30,8 +30,13 @@ export async function notifyAdminsOfFinish(
       [participant.firstName, participant.lastName].filter(Boolean).join(" ") ||
       (participant.bibNumber ? `Dossard ${participant.bibNumber}` : "Un concurrent");
 
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const raceUrl = `${baseUrl}/admin/races/${participant.race.id}`;
+
     const subject = `Nouveau résultat — ${participant.race.name}`;
-    const text = `${name} a terminé "${participant.race.name}" en ${formatDurationMs(durationMs)}.`;
+    const text = `${name} a terminé "${participant.race.name}" en ${formatDurationMs(
+      durationMs
+    )}.\n\nVoir la course : ${raceUrl}`;
 
     await Promise.all(
       admins.map((admin) =>
