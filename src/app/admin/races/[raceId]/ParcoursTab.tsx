@@ -82,6 +82,14 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
           />
         </label>
         {data?.gpxData && (
+          <a
+            href={`/api/admin/races/${raceId}/gpx/download`}
+            className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+          >
+            Télécharger le fichier GPX
+          </a>
+        )}
+        {data?.gpxData && (
           <button
             onClick={handleRemove}
             className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
