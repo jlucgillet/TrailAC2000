@@ -182,6 +182,7 @@ model Track {
   
   shareToken   String  @unique @default(uuid())
   shareEnabled Boolean @default(false)
+  visibleInAthleteSpace Boolean @default(true)
 
   adminId String
   admin   Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
