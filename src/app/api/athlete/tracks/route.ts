@@ -3,10 +3,10 @@ import { prisma } from "@/lib/db";
 import { getAthleteSession } from "@/lib/session";
 
 /**
- * Parcours consultables depuis l'espace concurrent : courses marquées
- * visibles par l'organisateur (réglage "Afficher cette course dans
- * l'espace concurrent"), ni brouillon ni archivée, avec au moins une
- * distance ou un tracé GPX renseigné (sinon rien à montrer).
+ * Parcours de la bibliothèque (model Track — pas les courses) consultables
+ * depuis l'espace concurrent. Toute la bibliothèque est accessible à tout
+ * concurrent connecté : ce sont des ressources partagées par
+ * l'organisateur, pas des données personnelles.
  */
 export async function GET() {
   const session = await getAthleteSession();
@@ -14,24 +14,17 @@ export async function GET() {
     return NextResponse.json({ error: "Non authentifié." }, { status: 401 });
   }
 
-  const races = await prisma.race.findMany({
-    where: {
-      visibleInAthleteSpace: true,
-      status: { notIn: ["draft", "archived"] },
-      OR: [{ gpxData: { not: null } }, { distanceKm: { not: null } }],
-    },
-    orderBy: { date: "desc" },
+  const tracks = await prisma.track.findMany({
+    orderBy: { createdAt: "desc" },
   });
 
   return NextResponse.json({
-    tracks: races.map((r) => ({
-      raceId: r.id,
-      name: r.name,
-      location: r.location,
-      date: r.date,
-      distanceKm: r.distanceKm,
-      elevationGainM: r.elevationGainM,
-      gpxData: r.gpxData,
+    tracks: tracks.map((t) => ({
+      id: t.id,
+      name: t.name,
+      distanceKm: t.distanceKm,
+      elevationGainM: t.elevationGainM,
+      gpxData: t.gpxData,
     })),
   });
 }
