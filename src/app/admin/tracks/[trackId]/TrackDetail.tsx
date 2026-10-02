@@ -119,6 +119,10 @@ export function TrackDetail({
         <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} large fullscreenControl basemapControl />
       )}
 
+      {!isLoading && (
+        <AthleteVisibilitySection trackId={trackId} data={data} onUpdated={() => mutate()} />
+      )}
+
       {!isLoading && <ShareSection trackId={trackId} data={data} onUpdated={() => mutate()} />}
 
       <div className="flex flex-wrap items-center gap-3">
@@ -150,6 +154,51 @@ export function TrackDetail({
         Remplacer le fichier recalcule automatiquement la distance et le dénivelé affichés
         ci-dessus, ainsi que la carte.
       </p>
+    </div>
+  );
+}
+
+function AthleteVisibilitySection({
+  trackId,
+  data,
+  onUpdated,
+}: {
+  trackId: string;
+  data: any;
+  onUpdated: () => void;
+}) {
+  const [toggling, setToggling] = useState(false);
+
+  async function handleToggle(enabled: boolean) {
+    setToggling(true);
+    await fetch(`/api/admin/tracks/${trackId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visibleInAthleteSpace: enabled }),
+    });
+    setToggling(false);
+    onUpdated();
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface p-5">
+      <h3 className="mb-3 font-display text-lg font-semibold">Espace concurrent</h3>
+      <label className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={!!data?.visibleInAthleteSpace}
+          onChange={(e) => handleToggle(e.target.checked)}
+          disabled={toggling}
+          className="mt-1"
+        />
+        <span>
+          <span className="block">Afficher ce parcours dans l&rsquo;espace concurrent</span>
+          <span className="block text-sm text-muted">
+            Visible dans la section Parcours de Mon Espace pour tout concurrent connecté. Désactive-le
+            pour un parcours de test ou pas encore prêt à être partagé.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

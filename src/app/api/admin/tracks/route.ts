@@ -24,6 +24,8 @@ export async function GET() {
       name: t.name,
       distanceKm: t.distanceKm,
       elevationGainM: t.elevationGainM,
+      gpxData: t.gpxData,
+      visibleInAthleteSpace: t.visibleInAthleteSpace,
       createdAt: t.createdAt,
     })),
   });

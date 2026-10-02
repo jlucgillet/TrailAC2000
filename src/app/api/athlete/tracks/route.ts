@@ -15,6 +15,7 @@ export async function GET() {
   }
 
   const tracks = await prisma.track.findMany({
+    where: { visibleInAthleteSpace: true },
     orderBy: { createdAt: "desc" },
   });
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
+import { TrackThumbnail } from "@/components/TrackThumbnail";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -71,12 +72,18 @@ export function TracksList() {
             <Link
               key={t.id}
               href={`/admin/tracks/${t.id}`}
-              className="rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent"
+              className="flex items-center gap-4 rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent"
             >
-              <h3 className="mb-2 font-display text-lg font-semibold">{t.name}</h3>
-              <p className="text-sm text-muted">
-                {t.distanceKm?.toFixed(1)} km · {Math.round(t.elevationGainM ?? 0)} m D+
-              </p>
+              <TrackThumbnail gpxData={t.gpxData} width={64} height={64} />
+              <div className="min-w-0">
+                <h3 className="mb-2 truncate font-display text-lg font-semibold">{t.name}</h3>
+                <p className="text-sm text-muted">
+                  {t.distanceKm?.toFixed(1)} km · {Math.round(t.elevationGainM ?? 0)} m D+
+                </p>
+                {!t.visibleInAthleteSpace && (
+                  <p className="mt-1 text-xs text-muted">🔒 Masqué de l&rsquo;espace concurrent</p>
+                )}
+              </div>
             </Link>
           ))}
         </div>

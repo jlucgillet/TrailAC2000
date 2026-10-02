@@ -22,12 +22,14 @@ export async function GET(
     gpxData: track.gpxData,
     shareEnabled: track.shareEnabled,
     shareToken: track.shareToken,
+    visibleInAthleteSpace: track.visibleInAthleteSpace,
   });
 }
 
 const patchSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   shareEnabled: z.boolean().optional(),
+  visibleInAthleteSpace: z.boolean().optional(),
 });
 
 export async function PATCH(
@@ -55,6 +57,7 @@ export async function PATCH(
     name: updated.name,
     shareEnabled: updated.shareEnabled,
     shareToken: updated.shareToken,
+    visibleInAthleteSpace: updated.visibleInAthleteSpace,
   });
 }
 
