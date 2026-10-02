@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { getAthleteSession } from "@/lib/session";
-import { AthleteLogoutButton } from "./AthleteLogoutButton";
+import { MonEspaceHeader } from "./MonEspaceHeader";
 
 export default async function AthleteLayout({
   children,
@@ -11,21 +10,7 @@ export default async function AthleteLayout({
 
   return (
     <div className="min-h-screen">
-      {session && (
-        <header className="border-b border-border">
-          <div className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
-            <Link href="/mon-espace" className="font-display text-xl font-semibold">
-              Mon espace concurrent
-            </Link>
-            <div className="flex items-center gap-4 text-sm text-muted">
-              <Link href="/guide" className="underline hover:text-ink">
-                Guide
-              </Link>
-              <AthleteLogoutButton />
-            </div>
-          </div>
-        </header>
-      )}
+      {session && <MonEspaceHeader />}
       <main className="mx-auto max-w-2xl px-4 py-8">{children}</main>
     </div>
   );

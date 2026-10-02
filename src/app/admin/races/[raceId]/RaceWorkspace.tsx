@@ -19,6 +19,7 @@ type Race = {
   elevationGainM: number | null;
   publicResultsEnabled: boolean;
   emailNotificationsEnabled: boolean;
+  visibleInAthleteSpace: boolean;
   openRegistration: boolean;
 };
 

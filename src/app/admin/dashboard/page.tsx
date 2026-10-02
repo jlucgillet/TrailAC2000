@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/session";
+import { TrackThumbnail } from "@/components/TrackThumbnail";
 import { NewRaceForm } from "./NewRaceForm";
 
 type RaceWithCount = Prisma.RaceGetPayload<{
@@ -84,16 +85,19 @@ function RaceGroup({
           <Link
             key={race.id}
             href={`/admin/races/${race.id}`}
-            className={`rounded-xl border bg-surface p-5 transition-colors hover:border-accent ${
+            className={`flex items-center gap-4 rounded-xl border bg-surface p-5 transition-colors hover:border-accent ${
               accent ? "border-accent/40" : "border-border"
             }`}
           >
-            <h4 className="mb-2 font-display text-xl font-semibold">{race.name}</h4>
-            <p className="text-sm text-muted">
-              {new Date(race.date).toLocaleDateString("fr-FR")}
-              {race.location ? ` · ${race.location}` : ""}
-            </p>
-            <p className="mt-2 text-sm text-muted">{race._count.participants} participant(s)</p>
+            <TrackThumbnail gpxData={race.gpxData} width={72} height={72} />
+            <div className="min-w-0">
+              <h4 className="mb-2 truncate font-display text-xl font-semibold">{race.name}</h4>
+              <p className="text-sm text-muted">
+                {new Date(race.date).toLocaleDateString("fr-FR")}
+                {race.location ? ` · ${race.location}` : ""}
+              </p>
+              <p className="mt-2 text-sm text-muted">{race._count.participants} participant(s)</p>
+            </div>
           </Link>
         ))}
       </div>

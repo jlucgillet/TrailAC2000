@@ -28,6 +28,7 @@ const updateSchema = z.object({
   status: z.enum(["draft", "active", "closed", "archived"]).optional(),
   publicResultsEnabled: z.boolean().optional(),
   emailNotificationsEnabled: z.boolean().optional(),
+  visibleInAthleteSpace: z.boolean().optional(),
   openRegistration: z.boolean().optional(),
 });
 

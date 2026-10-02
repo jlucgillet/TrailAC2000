@@ -11,6 +11,7 @@ type Race = {
   status: "draft" | "active" | "closed" | "archived";
   publicResultsEnabled: boolean;
   emailNotificationsEnabled: boolean;
+  visibleInAthleteSpace: boolean;
   openRegistration: boolean;
 };
 
@@ -165,6 +166,26 @@ export function SettingsTab({
           <span>
             Autoriser la consultation publique des résultats (sans numéro de téléphone) à l&rsquo;adresse{" "}
             <code className="text-muted">/results/{race.id}</code>
+          </span>
+        </label>
+      </section>
+
+      <section>
+        <h3 className="mb-3 font-display text-xl font-semibold">Espace concurrent</h3>
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={race.visibleInAthleteSpace}
+            onChange={(e) => updateField({ visibleInAthleteSpace: e.target.checked })}
+            className="mt-1"
+          />
+          <span>
+            <span className="block">Afficher cette course dans l&rsquo;espace concurrent</span>
+            <span className="block text-sm text-muted">
+              Désactive-le pour une course de test ou en préparation : elle n&rsquo;apparaîtra pas
+              dans la section Parcours de Mon Espace, même si un GPX est déjà importé. Ça ne
+              masque pas la course pour un concurrent déjà inscrit dans "Mes courses".
+            </span>
           </span>
         </label>
       </section>
