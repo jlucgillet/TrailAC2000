@@ -27,7 +27,6 @@ export function AthleteDashboard() {
   }
 
   const myRaces = data?.myRaces ?? [];
-  const joinableRaces = data?.joinableRaces ?? [];
   const fullName = [data?.firstName, data?.lastName].filter(Boolean).join(" ");
 
   return (
@@ -46,7 +45,8 @@ export function AthleteDashboard() {
         <h1 className="mb-6 font-display text-3xl font-semibold">Mes courses</h1>
         {myRaces.length === 0 ? (
           <p className="text-muted">
-            Tu n&rsquo;as encore rejoint aucune course. Retrouve les courses actives ci-dessous.
+            Tu n&rsquo;as encore rejoint aucune course. Scanne un QR code DÉPART ou ARRIVÉE pour
+            en rejoindre une.
           </p>
         ) : (
           <div className="flex flex-col gap-3">
@@ -69,14 +69,6 @@ export function AthleteDashboard() {
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {r.raceStatus === "active" && (
-                    <Link
-                      href={`/mon-espace/course/${r.raceId}`}
-                      className="rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
-                    >
-                      📷 Scanner cette course
-                    </Link>
-                  )}
                   <Link
                     href={`/mon-espace/course/${r.raceId}/fiche`}
                     className="flex items-center gap-1.5 rounded-lg border border-ink/40 bg-surfaceRaised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-surface"
@@ -95,19 +87,6 @@ export function AthleteDashboard() {
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2 className="mb-4 font-display text-2xl font-semibold">Rejoindre une course active</h2>
-        {joinableRaces.length === 0 ? (
-          <p className="text-muted">Aucune course active à rejoindre pour le moment.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {joinableRaces.map((r: any) => (
-              <JoinableRaceRow key={r.id} race={r} onJoined={() => mutate()} />
             ))}
           </div>
         )}
@@ -182,7 +161,7 @@ function NameHeader({
   if (fullName) {
     return (
       <div className="flex items-center gap-3">
-        <p className="font-display text-2xl font-semibold">Bonjour, {fullName}</p>
+        <p className="font-display text-2xl font-semibold">Bonjour {fullName}</p>
         <button onClick={() => setEditing(true)} className="text-sm text-muted underline">
           Modifier
         </button>
@@ -197,35 +176,3 @@ function NameHeader({
   );
 }
 
-function JoinableRaceRow({
-  race,
-  onJoined,
-}: {
-  race: { id: string; name: string; date: string; location: string | null };
-  onJoined: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between rounded-xl border-2 border-accent/30 bg-surface p-4">
-      <div>
-        <p className="font-medium">{race.name}</p>
-        <p className="text-sm text-muted">
-          {new Date(race.date).toLocaleDateString("fr-FR")}
-          {race.location ? ` · ${race.location}` : ""}
-        </p>
-      </div>
-      <button
-        onClick={async () => {
-          await fetch("/api/athlete/join", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ raceId: race.id }),
-          });
-          onJoined();
-        }}
-        className="rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-accent hover:bg-accent/10"
-      >
-        Rejoindre
-      </button>
-    </div>
-  );
-}
