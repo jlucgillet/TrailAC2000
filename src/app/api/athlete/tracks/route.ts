@@ -16,11 +16,20 @@ export async function GET() {
 
   const tracks = await prisma.track.findMany({
     where: { visibleInAthleteSpace: true },
-    orderBy: { createdAt: "desc" },
+  });
+
+  // Ordre croissant de distance, puis de dénivelé en cas d'égalité — les
+  // parcours sans distance renseignée sont relégués en fin de liste.
+  const sorted = [...tracks].sort((a, b) => {
+    if (a.distanceKm === null && b.distanceKm === null) return 0;
+    if (a.distanceKm === null) return 1;
+    if (b.distanceKm === null) return -1;
+    if (a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+    return (a.elevationGainM ?? 0) - (b.elevationGainM ?? 0);
   });
 
   return NextResponse.json({
-    tracks: tracks.map((t) => ({
+    tracks: sorted.map((t) => ({
       id: t.id,
       name: t.name,
       distanceKm: t.distanceKm,
