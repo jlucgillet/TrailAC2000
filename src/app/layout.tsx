@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Inter, Barlow_Condensed } from "next/font/google";
 import "./globals.css";
 import { BusyIndicator } from "@/components/BusyIndicator";
+import { UpdateChecker } from "@/components/UpdateChecker";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const barlowCondensed = Barlow_Condensed({
@@ -36,6 +37,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <BusyIndicator />
         </Suspense>
+        <UpdateChecker />
       </body>
     </html>
   );
