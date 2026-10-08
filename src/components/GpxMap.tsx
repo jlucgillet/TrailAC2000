@@ -102,6 +102,21 @@ function addKmMarkers(
   }
 }
 
+/** Cap (0-360°, 0 = nord) du point a vers le point b. */
+function bearingDeg(a: MapPoint, b: MapPoint): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const y = Math.sin(toRad(b.lon - a.lon)) * Math.cos(toRad(b.lat));
+  const x =
+    Math.cos(toRad(a.lat)) * Math.sin(toRad(b.lat)) -
+    Math.sin(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.cos(toRad(b.lon - a.lon));
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
+}
+
+function angleDiff(a: number, b: number): number {
+  const d = Math.abs(a - b) % 360;
+  return d > 180 ? 360 - d : d;
+}
+
 type TrackIndex = { cumul: number[]; total: number };
 
 function buildTrackIndex(points: MapPoint[]): TrackIndex {
@@ -123,10 +138,10 @@ function projectOnTrack(
   lat: number,
   lon: number,
   hintMeters: number | null
-): { along: number; offTrack: number } {
+): { along: number; offTrack: number; bearing: number } {
   const mPerDegLat = 111320;
   const mPerDegLon = 111320 * Math.cos((lat * Math.PI) / 180);
-  const candidates: { along: number; dist: number }[] = [];
+  const candidates: { along: number; dist: number; bearing: number }[] = [];
   let best = Infinity;
 
   for (let i = 1; i < points.length; i++) {
@@ -145,14 +160,14 @@ function projectOnTrack(
     const py = ay + t * dy;
     const dist = Math.sqrt(px * px + py * py);
     const along = index.cumul[i - 1] + t * (index.cumul[i] - index.cumul[i - 1]);
-    candidates.push({ along, dist });
+    candidates.push({ along, dist, bearing: bearingDeg(a, b) });
     if (dist < best) best = dist;
   }
 
   // Parmi les points quasi aussi proches que le meilleur, on garde celui le
   // plus proche de la dernière position connue.
   const tolerance = best + 25;
-  let chosen = { along: 0, dist: best };
+  let chosen = { along: 0, dist: best, bearing: 0 };
   let chosenGap = Infinity;
   for (const c of candidates) {
     if (c.dist > tolerance) continue;
@@ -162,7 +177,7 @@ function projectOnTrack(
       chosen = c;
     }
   }
-  return { along: chosen.along, offTrack: chosen.dist };
+  return { along: chosen.along, offTrack: chosen.dist, bearing: chosen.bearing };
 }
 
 function formatKm(meters: number): string {
@@ -170,7 +185,21 @@ function formatKm(meters: number): string {
 }
 
 type GpsStatus = "off" | "starting" | "on" | "error";
-type GpsInfo = { along: number; remaining: number; offTrack: number; accuracy: number };
+type GpsInfo = {
+  along: number;
+  remaining: number;
+  offTrack: number;
+  accuracy: number;
+  direction: "ok" | "reverse" | null;
+};
+
+/** Pastille bleue à l'arrêt, flèche orientée dans le sens du déplacement en mouvement. */
+function positionIconHtml(heading: number | null): string {
+  if (heading == null) {
+    return '<div style="width:20px;height:20px;border-radius:9999px;background:#2563EB;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.5);"></div>';
+  }
+  return `<div style="width:34px;height:34px;transform:rotate(${Math.round(heading)}deg);filter:drop-shadow(0 1px 3px rgba(0,0,0,0.55));"><svg viewBox="0 0 34 34" width="34" height="34"><path d="M17 3 L28 29 L17 23 L6 29 Z" fill="#2563EB" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg></div>`;
+}
 
 /**
  * Carte du tracé GPX (Leaflet). Le tracé est coloré par tronçons selon la
@@ -211,7 +240,9 @@ export function GpxMap({
   const [gpsActive, setGpsActive] = useState(false);
   const [follow, setFollow] = useState(true);
   const followRef = useRef(true);
-  const markerRef = useRef<import("leaflet").CircleMarker | null>(null);
+  const markerRef = useRef<import("leaflet").Marker | null>(null);
+  const prevPosRef = useRef<MapPoint | null>(null);
+  const headingRef = useRef<number | null>(null);
   const accuracyRef = useRef<import("leaflet").Circle | null>(null);
   const lastAlongRef = useRef<number | null>(null);
   const firstFixRef = useRef(true);
@@ -344,20 +375,49 @@ export function GpxMap({
 
     firstFixRef.current = true;
     lastAlongRef.current = null;
+    prevPosRef.current = null;
+    headingRef.current = null;
 
     const watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const L = leafletRef.current;
         const map = mapRef.current;
-        const { latitude, longitude, accuracy } = pos.coords;
+        const { latitude, longitude, accuracy, heading: gpsHeading, speed } = pos.coords;
 
         const proj = projectOnTrack(points, trackIndex, latitude, longitude, lastAlongRef.current);
         lastAlongRef.current = proj.along;
+
+        // Direction de déplacement : cap GPS si on avance vraiment, sinon
+        // calculé depuis la position précédente (au moins 8 m parcourus).
+        const here = { lat: latitude, lon: longitude };
+        const prev = prevPosRef.current;
+        if (gpsHeading != null && Number.isFinite(gpsHeading) && (speed ?? 0) > 0.7) {
+          headingRef.current = gpsHeading;
+          prevPosRef.current = here;
+        } else if (prev && haversineMeters(prev, here) >= 8) {
+          headingRef.current = bearingDeg(prev, here);
+          prevPosRef.current = here;
+        } else if (!prev) {
+          prevPosRef.current = here;
+        }
+        // À l'arrêt prolongé on repasse à la pastille.
+        if ((speed ?? 1) < 0.3 && gpsHeading == null && prev && haversineMeters(prev, here) < 3) {
+          headingRef.current = null;
+        }
+        const heading = headingRef.current;
+
+        let direction: "ok" | "reverse" | null = null;
+        if (heading != null && proj.offTrack < 100) {
+          const diff = angleDiff(heading, proj.bearing);
+          direction = diff < 60 ? "ok" : diff > 120 ? "reverse" : null;
+        }
+
         setGpsInfo({
           along: proj.along,
           remaining: Math.max(0, trackIndex.total - proj.along),
           offTrack: proj.offTrack,
           accuracy,
+          direction,
         });
         setGpsStatus("on");
         setGpsError(null);
@@ -373,24 +433,35 @@ export function GpxMap({
             fillOpacity: 0.15,
             interactive: false,
           }).addTo(map);
-          markerRef.current = L.circleMarker([latitude, longitude], {
-            radius: 9,
-            color: "#FFFFFF",
-            weight: 3,
-            fillColor: "#2563EB",
-            fillOpacity: 1,
-          })
-            .addTo(map)
-            .bindTooltip("Toi");
+          markerRef.current = L.marker([latitude, longitude], {
+            icon: L.divIcon({
+              className: "",
+              html: positionIconHtml(heading),
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
+            }),
+            interactive: false,
+            zIndexOffset: 1000,
+          }).addTo(map);
         } else {
           markerRef.current.setLatLng([latitude, longitude]);
+          markerRef.current.setIcon(
+            L.divIcon({
+              className: "",
+              html: positionIconHtml(heading),
+              iconSize: [34, 34],
+              iconAnchor: [17, 17],
+            })
+          );
           accuracyRef.current?.setLatLng([latitude, longitude]);
           accuracyRef.current?.setRadius(accuracy);
         }
 
         if (followRef.current) {
           if (firstFixRef.current) {
-            map.setView([latitude, longitude], Math.max(map.getZoom(), 16), { animate: true });
+            map.setView([latitude, longitude], Math.min(Math.max(map.getZoom(), 17), map.getMaxZoom()), {
+              animate: true,
+            });
           } else {
             map.panTo([latitude, longitude], { animate: true });
           }
@@ -610,6 +681,12 @@ export function GpxMap({
                   }}
                 />
               </div>
+              {gpsInfo.direction === "ok" && (
+                <p className="mt-2 text-xs text-ink">✅ Tu suis le tracé dans le bon sens.</p>
+              )}
+              {gpsInfo.direction === "reverse" && (
+                <p className="mt-2 text-xs text-ink">↩️ Tu vas à contre-sens du tracé. Demi-tour ?</p>
+              )}
               {gpsInfo.offTrack > 100 && (
                 <p className="mt-2 text-xs text-ink">
                   ⚠️ Tu es à {Math.round(gpsInfo.offTrack)} m du tracé.
