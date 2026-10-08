@@ -47,6 +47,7 @@ export function TrackViewer({
           points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))}
           fullscreenControl
           basemapControl
+          gpsControl
         />
       ) : (
         <p className="text-muted">Aucun tracé disponible pour ce parcours.</p>

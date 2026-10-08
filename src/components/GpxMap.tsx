@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 
 type MapPoint = { lat: number; lon: number; ele?: number | null };
@@ -102,6 +102,76 @@ function addKmMarkers(
   }
 }
 
+type TrackIndex = { cumul: number[]; total: number };
+
+function buildTrackIndex(points: MapPoint[]): TrackIndex {
+  const cumul = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumul.push(cumul[i - 1] + haversineMeters(points[i - 1], points[i]));
+  }
+  return { cumul, total: cumul[cumul.length - 1] };
+}
+
+/**
+ * Projette une position GPS sur le tracé. Renvoie la distance parcourue le
+ * long du tracé et l'écart (en mètres) avec le tracé. `hintMeters` (dernière
+ * position connue) départage les passages multiples (aller-retour, boucle).
+ */
+function projectOnTrack(
+  points: MapPoint[],
+  index: TrackIndex,
+  lat: number,
+  lon: number,
+  hintMeters: number | null
+): { along: number; offTrack: number } {
+  const mPerDegLat = 111320;
+  const mPerDegLon = 111320 * Math.cos((lat * Math.PI) / 180);
+  const candidates: { along: number; dist: number }[] = [];
+  let best = Infinity;
+
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
+    const ax = (a.lon - lon) * mPerDegLon;
+    const ay = (a.lat - lat) * mPerDegLat;
+    const bx = (b.lon - lon) * mPerDegLon;
+    const by = (b.lat - lat) * mPerDegLat;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 > 0 ? -(ax * dx + ay * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const px = ax + t * dx;
+    const py = ay + t * dy;
+    const dist = Math.sqrt(px * px + py * py);
+    const along = index.cumul[i - 1] + t * (index.cumul[i] - index.cumul[i - 1]);
+    candidates.push({ along, dist });
+    if (dist < best) best = dist;
+  }
+
+  // Parmi les points quasi aussi proches que le meilleur, on garde celui le
+  // plus proche de la dernière position connue.
+  const tolerance = best + 25;
+  let chosen = { along: 0, dist: best };
+  let chosenGap = Infinity;
+  for (const c of candidates) {
+    if (c.dist > tolerance) continue;
+    const gap = hintMeters == null ? c.dist : Math.abs(c.along - hintMeters);
+    if (gap < chosenGap) {
+      chosenGap = gap;
+      chosen = c;
+    }
+  }
+  return { along: chosen.along, offTrack: chosen.dist };
+}
+
+function formatKm(meters: number): string {
+  return `${(meters / 1000).toFixed(2).replace(".", ",")} km`;
+}
+
+type GpsStatus = "off" | "starting" | "on" | "error";
+type GpsInfo = { along: number; remaining: number; offTrack: number; accuracy: number };
+
 /**
  * Carte du tracé GPX (Leaflet). Le tracé est coloré par tronçons selon la
  * pente (rouge = montée, vert = descente, nuances selon l'intensité) quand
@@ -111,17 +181,21 @@ function addKmMarkers(
  * - `fullscreenControl` : bouton plein écran (simulé en CSS, fonctionne
  *   aussi sur iPhone).
  * - `basemapControl` : bouton pour changer le fond de carte.
+ * - `gpsControl` : suivi GPS en direct (position, suivi de la carte,
+ *   distance parcourue / restante le long du tracé).
  */
 export function GpxMap({
   points,
   large = false,
   fullscreenControl = false,
   basemapControl = false,
+  gpsControl = false,
 }: {
   points: MapPoint[];
   large?: boolean;
   fullscreenControl?: boolean;
   basemapControl?: boolean;
+  gpsControl?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -130,6 +204,19 @@ export function GpxMap({
   const [fullscreen, setFullscreen] = useState(false);
   const [basemap, setBasemap] = useState<BasemapKey>("topo");
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const [gpsStatus, setGpsStatus] = useState<GpsStatus>("off");
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsInfo, setGpsInfo] = useState<GpsInfo | null>(null);
+  const [gpsActive, setGpsActive] = useState(false);
+  const [follow, setFollow] = useState(true);
+  const followRef = useRef(true);
+  const markerRef = useRef<import("leaflet").CircleMarker | null>(null);
+  const accuracyRef = useRef<import("leaflet").Circle | null>(null);
+  const lastAlongRef = useRef<number | null>(null);
+  const firstFixRef = useRef(true);
+
+  const trackIndex = useMemo(() => buildTrackIndex(points), [points]);
 
   const pointsKey = `${points.length}:${points
     .reduce((sum, p) => sum + p.lat + p.lon, 0)
@@ -217,6 +304,8 @@ export function GpxMap({
         mapRef.current.remove();
         mapRef.current = null;
         tileLayerRef.current = null;
+        markerRef.current = null;
+        accuracyRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -237,6 +326,145 @@ export function GpxMap({
     }).addTo(map);
     tileLayerRef.current.bringToBack();
   }, [basemap]);
+
+  useEffect(() => {
+    followRef.current = follow;
+  }, [follow]);
+
+  // Suivi GPS : watchPosition + marqueur + calcul des distances.
+  useEffect(() => {
+    if (!gpsControl || !gpsActive) return;
+
+    if (typeof navigator === "undefined" || !("geolocation" in navigator)) {
+      setGpsError("Ton navigateur ne gère pas la géolocalisation.");
+      setGpsStatus("error");
+      setGpsActive(false);
+      return;
+    }
+
+    firstFixRef.current = true;
+    lastAlongRef.current = null;
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const L = leafletRef.current;
+        const map = mapRef.current;
+        const { latitude, longitude, accuracy } = pos.coords;
+
+        const proj = projectOnTrack(points, trackIndex, latitude, longitude, lastAlongRef.current);
+        lastAlongRef.current = proj.along;
+        setGpsInfo({
+          along: proj.along,
+          remaining: Math.max(0, trackIndex.total - proj.along),
+          offTrack: proj.offTrack,
+          accuracy,
+        });
+        setGpsStatus("on");
+        setGpsError(null);
+
+        if (!L || !map) return;
+
+        if (!markerRef.current) {
+          accuracyRef.current = L.circle([latitude, longitude], {
+            radius: accuracy,
+            color: "#2563EB",
+            weight: 1,
+            fillColor: "#3B82F6",
+            fillOpacity: 0.15,
+            interactive: false,
+          }).addTo(map);
+          markerRef.current = L.circleMarker([latitude, longitude], {
+            radius: 9,
+            color: "#FFFFFF",
+            weight: 3,
+            fillColor: "#2563EB",
+            fillOpacity: 1,
+          })
+            .addTo(map)
+            .bindTooltip("Toi");
+        } else {
+          markerRef.current.setLatLng([latitude, longitude]);
+          accuracyRef.current?.setLatLng([latitude, longitude]);
+          accuracyRef.current?.setRadius(accuracy);
+        }
+
+        if (followRef.current) {
+          if (firstFixRef.current) {
+            map.setView([latitude, longitude], Math.max(map.getZoom(), 16), { animate: true });
+          } else {
+            map.panTo([latitude, longitude], { animate: true });
+          }
+        }
+        firstFixRef.current = false;
+      },
+      (err) => {
+        setGpsError(
+          err.code === err.PERMISSION_DENIED
+            ? "Localisation refusée. Autorise-la dans les réglages de ton navigateur, puis réessaie."
+            : err.code === err.POSITION_UNAVAILABLE
+            ? "Position introuvable. Vérifie que le GPS de ton téléphone est activé."
+            : "Délai dépassé pour obtenir ta position. Réessaie à l'extérieur."
+        );
+        setGpsStatus("error");
+        setGpsActive(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 }
+    );
+
+    // Garde l'écran allumé tant que le suivi est actif (si le navigateur le permet).
+    let wakeLock: { release: () => Promise<void> } | null = null;
+    async function acquireWakeLock() {
+      try {
+        const nav = navigator as Navigator & {
+          wakeLock?: { request: (t: "screen") => Promise<{ release: () => Promise<void> }> };
+        };
+        if (nav.wakeLock) wakeLock = await nav.wakeLock.request("screen");
+      } catch {
+        /* pas critique */
+      }
+    }
+    acquireWakeLock();
+    function onVisible() {
+      if (document.visibilityState === "visible") acquireWakeLock();
+    }
+    document.addEventListener("visibilitychange", onVisible);
+
+    // Si l'utilisateur déplace la carte à la main, on arrête de la recentrer.
+    const map = mapRef.current;
+    const onDrag = () => setFollow(false);
+    map?.on("dragstart", onDrag);
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      document.removeEventListener("visibilitychange", onVisible);
+      map?.off("dragstart", onDrag);
+      wakeLock?.release().catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsControl, gpsActive, pointsKey]);
+
+  function toggleGps() {
+    if (!gpsActive) {
+      setGpsError(null);
+      setFollow(true);
+      setGpsStatus("starting");
+      setGpsActive(true);
+    } else {
+      setGpsActive(false);
+      setGpsStatus("off");
+      setGpsInfo(null);
+      markerRef.current?.remove();
+      accuracyRef.current?.remove();
+      markerRef.current = null;
+      accuracyRef.current = null;
+    }
+  }
+
+  function recenter() {
+    setFollow(true);
+    const m = markerRef.current;
+    if (m && mapRef.current) mapRef.current.panTo(m.getLatLng(), { animate: true });
+  }
 
   // Le conteneur change de taille en entrant/sortant du plein écran :
   // Leaflet doit recalculer ses dimensions et recentrer le tracé.
@@ -290,6 +518,35 @@ export function GpxMap({
           </button>
         )}
 
+        {gpsControl && (
+          <button
+            type="button"
+            onClick={toggleGps}
+            aria-pressed={gpsActive}
+            aria-label={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
+            title={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-base shadow-md backdrop-blur-sm hover:border-ink ${
+              gpsActive
+                ? "border-accent bg-accent text-bg"
+                : "border-border bg-bg/90"
+            } ${gpsStatus === "starting" ? "animate-pulse" : ""}`}
+          >
+            <span aria-hidden>📍</span>
+          </button>
+        )}
+
+        {gpsControl && gpsStatus === "on" && !follow && (
+          <button
+            type="button"
+            onClick={recenter}
+            aria-label="Recentrer sur ma position"
+            title="Recentrer sur ma position"
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
+          >
+            <span aria-hidden>🎯</span>
+          </button>
+        )}
+
         {basemapControl && (
           <div className="relative">
             <button
@@ -324,6 +581,45 @@ export function GpxMap({
           </div>
         )}
       </div>
+
+      {gpsControl && gpsStatus !== "off" && (
+        <div className="absolute inset-x-3 bottom-3 z-[1000] rounded-xl border border-border bg-bg/95 p-3 text-sm shadow-lg backdrop-blur-sm sm:max-w-sm">
+          {gpsStatus === "error" && <p className="text-ink">{gpsError}</p>}
+          {gpsStatus === "starting" && <p className="text-muted">Recherche de ta position…</p>}
+          {gpsStatus === "on" && gpsInfo && (
+            <>
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs text-muted">Parcouru</p>
+                  <p className="font-display text-xl font-semibold tabular-nums">
+                    {formatKm(gpsInfo.along)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-muted">Restant</p>
+                  <p className="font-display text-xl font-semibold tabular-nums">
+                    {formatKm(gpsInfo.remaining)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+                <div
+                  className="h-full bg-accent"
+                  style={{
+                    width: `${Math.min(100, (gpsInfo.along / Math.max(1, trackIndex.total)) * 100)}%`,
+                  }}
+                />
+              </div>
+              {gpsInfo.offTrack > 100 && (
+                <p className="mt-2 text-xs text-ink">
+                  ⚠️ Tu es à {Math.round(gpsInfo.offTrack)} m du tracé.
+                </p>
+              )}
+              <p className="mt-1 text-xs text-muted">Précision GPS : ±{Math.round(gpsInfo.accuracy)} m</p>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
