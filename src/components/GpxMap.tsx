@@ -238,6 +238,10 @@ export function GpxMap({
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsInfo, setGpsInfo] = useState<GpsInfo | null>(null);
   const [gpsActive, setGpsActive] = useState(false);
+  const gpsActiveRef = useRef(false);
+  gpsActiveRef.current = gpsActive;
+  const trackLayersRef = useRef<import("leaflet").Polyline[]>([]);
+  const redLayersRef = useRef<import("leaflet").Polyline[]>([]);
   const [follow, setFollow] = useState(true);
   const followRef = useRef(true);
   const markerRef = useRef<import("leaflet").Marker | null>(null);
@@ -277,6 +281,7 @@ export function GpxMap({
       const smoothed = smoothElevations(points);
       const hasElevation = smoothed.some((e) => e !== null);
 
+      const slopeLayers: import("leaflet").Polyline[] = [];
       if (hasElevation) {
         for (let i = 1; i < points.length; i++) {
           const a = points[i - 1];
@@ -288,17 +293,26 @@ export function GpxMap({
             eleA !== null && eleB !== null && distance > 0.5
               ? ((eleB - eleA) / distance) * 100
               : 0;
-          L.polyline(
-            [
-              [a.lat, a.lon],
-              [b.lat, b.lon],
-            ],
-            { color: gradeToColor(grade), weight: 5 }
-          ).addTo(map);
+          slopeLayers.push(
+            L.polyline(
+              [
+                [a.lat, a.lon],
+                [b.lat, b.lon],
+              ],
+              { color: gradeToColor(grade), weight: 5 }
+            ).addTo(map)
+          );
         }
       } else {
-        L.polyline(latlngs, { color: "#3B82F6", weight: 4 }).addTo(map);
+        slopeLayers.push(L.polyline(latlngs, { color: "#3B82F6", weight: 4 }).addTo(map));
       }
+      trackLayersRef.current = slopeLayers;
+      // Tracé « théorique » du mode suivi GPS : rouge uni, avec liseré blanc.
+      redLayersRef.current = [
+        L.polyline(latlngs, { color: "#FFFFFF", weight: 9, opacity: 0.9 }),
+        L.polyline(latlngs, { color: "#DC2626", weight: 5 }),
+      ];
+      applyTrackStyle();
 
       addKmMarkers(L, map, points);
 
@@ -337,6 +351,8 @@ export function GpxMap({
         tileLayerRef.current = null;
         markerRef.current = null;
         accuracyRef.current = null;
+        trackLayersRef.current = [];
+        redLayersRef.current = [];
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,6 +373,22 @@ export function GpxMap({
     }).addTo(map);
     tileLayerRef.current.bringToBack();
   }, [basemap]);
+
+  // Mode suivi GPS : tracé rouge uni ; sinon, tracé nuancé selon la pente.
+  function applyTrackStyle() {
+    const map = mapRef.current;
+    if (!map) return;
+    const red = gpsActiveRef.current;
+    trackLayersRef.current.forEach((l) => (red ? map.removeLayer(l) : l.addTo(map)));
+    redLayersRef.current.forEach((l) => (red ? l.addTo(map) : map.removeLayer(l)));
+    if (!red) trackLayersRef.current.forEach((l) => l.bringToBack());
+    tileLayerRef.current?.bringToBack();
+  }
+
+  useEffect(() => {
+    applyTrackStyle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gpsActive]);
 
   useEffect(() => {
     followRef.current = follow;
