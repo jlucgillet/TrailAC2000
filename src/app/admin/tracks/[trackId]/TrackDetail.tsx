@@ -26,6 +26,7 @@ export function TrackDetail({
   const [saved, setSaved] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [reversing, setReversing] = useState(false);
 
   async function handleRename(e: React.FormEvent) {
     e.preventDefault();
@@ -55,6 +56,25 @@ export function TrackDetail({
 
     if (!res.ok) {
       setUploadError(result.error ?? "Erreur lors de l'import.");
+      return;
+    }
+    mutate();
+  }
+
+  async function handleReverse() {
+    if (
+      !confirm(
+        "Inverser le sens de ce parcours ? Le départ et l'arrivée seront échangés et le dénivelé positif recalculé."
+      )
+    )
+      return;
+    setReversing(true);
+    setUploadError(null);
+    const res = await fetch(`/api/admin/tracks/${trackId}/reverse`, { method: "POST" });
+    setReversing(false);
+    if (!res.ok) {
+      const result = await res.json().catch(() => ({}));
+      setUploadError(result.error ?? "Erreur lors de l'inversion.");
       return;
     }
     mutate();
@@ -143,6 +163,14 @@ export function TrackDetail({
           Télécharger le fichier GPX
         </a>
         <button
+          type="button"
+          onClick={handleReverse}
+          disabled={reversing || isLoading || points.length < 2}
+          className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
+        >
+          {reversing ? "Inversion…" : "⇄ Inverser le sens"}
+        </button>
+        <button
           onClick={handleDelete}
           className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
         >
@@ -151,8 +179,9 @@ export function TrackDetail({
       </div>
       {uploadError && <p className="text-sm text-danger">{uploadError}</p>}
       <p className="text-xs text-muted">
-        Remplacer le fichier recalcule automatiquement la distance et le dénivelé affichés
-        ci-dessus, ainsi que la carte.
+        Remplacer le fichier ou inverser le sens recalcule automatiquement la distance et le
+        dénivelé affichés ci-dessus, ainsi que la carte. Le nom du parcours n&rsquo;est pas modifié :
+        pense à le renommer s&rsquo;il contient le dénivelé.
       </p>
     </div>
   );
