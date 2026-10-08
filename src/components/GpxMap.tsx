@@ -137,7 +137,8 @@ function projectOnTrack(
   index: TrackIndex,
   lat: number,
   lon: number,
-  hintMeters: number | null
+  hintMeters: number | null,
+  windowMeters = 500
 ): { along: number; offTrack: number; bearing: number } {
   const mPerDegLat = 111320;
   const mPerDegLon = 111320 * Math.cos((lat * Math.PI) / 180);
@@ -164,16 +165,25 @@ function projectOnTrack(
     if (dist < best) best = dist;
   }
 
+  // Référence de progression : dernière position connue, ou le départ au
+  // premier relevé (on suppose qu'on démarre au début du parcours).
+  const ref = hintMeters ?? 0;
+
+  // On privilégie les points du tracé « plausibles » (près de la référence),
+  // sauf s'ils sont nettement plus loin de nous qu'un autre passage du tracé.
+  const inWindow = candidates.filter((c) => Math.abs(c.along - ref) <= windowMeters);
+  const bestInWindow = inWindow.reduce((m, c) => Math.min(m, c.dist), Infinity);
+  const pool = inWindow.length > 0 && bestInWindow <= best + 40 ? inWindow : candidates;
+  const poolBest = pool.reduce((m, c) => Math.min(m, c.dist), Infinity);
+
   // Parmi les points quasi aussi proches que le meilleur, on garde celui le
-  // plus proche de la dernière position connue.
-  const tolerance = best + 25;
-  let chosen = { along: 0, dist: best, bearing: 0 };
+  // plus proche de la référence (boucles, allers-retours, passages multiples).
+  const tolerance = poolBest + 25;
+  let chosen = { along: 0, dist: poolBest, bearing: 0 };
   let chosenGap = Infinity;
-  for (const c of candidates) {
+  for (const c of pool) {
     if (c.dist > tolerance) continue;
-    // Premier relevé (pas encore d'historique) : on suppose qu'on est au départ,
-    // ce qui évite de se retrouver « à l'arrivée » sur une boucle ou un aller-retour.
-    const gap = Math.abs(c.along - (hintMeters ?? 0));
+    const gap = Math.abs(c.along - ref);
     if (gap < chosenGap) {
       chosenGap = gap;
       chosen = c;
@@ -188,6 +198,7 @@ function formatKm(meters: number): string {
 
 const OFF_TRACK_ALERT_M = 30;
 const FAR_FROM_TRACK_M = 150;
+const WEAK_ACCURACY_M = 60;
 
 /** Notification système (visible aussi écran verrouillé sur Android). */
 async function showOffTrackNotification(message: string) {
@@ -214,6 +225,7 @@ type GpsInfo = {
   offTrack: number;
   accuracy: number;
   direction: "ok" | "reverse" | null;
+  weak: boolean;
 };
 
 /** Pastille bleue à l'arrêt, flèche orientée dans le sens du déplacement en mouvement. */
@@ -269,6 +281,8 @@ export function GpxMap({
   const offCountRef = useRef(0);
   const lastAlertRef = useRef(0);
   const wasOffRef = useRef(false);
+  const lastFixTimeRef = useRef<number | null>(null);
+  const lastInfoRef = useRef<GpsInfo | null>(null);
   gpsActiveRef.current = gpsActive;
   const trackLayersRef = useRef<import("leaflet").Polyline[]>([]);
   const redLayersRef = useRef<import("leaflet").Polyline[]>([]);
@@ -522,6 +536,8 @@ export function GpxMap({
     wasOffRef.current = false;
     lastAlertRef.current = 0;
     lastAlongRef.current = null;
+    lastFixTimeRef.current = null;
+    lastInfoRef.current = null;
     prevPosRef.current = null;
     headingRef.current = null;
 
@@ -531,8 +547,26 @@ export function GpxMap({
         const map = mapRef.current;
         const { latitude, longitude, accuracy, heading: gpsHeading, speed } = pos.coords;
 
-        const proj = projectOnTrack(points, trackIndex, latitude, longitude, lastAlongRef.current);
-        lastAlongRef.current = proj.along;
+        // Position trop imprécise (réseau mobile / GPS pas encore verrouillé) :
+        // on affiche le point mais on ne calcule ni progression ni alerte.
+        const weak = accuracy > WEAK_ACCURACY_M;
+        const now = Date.now();
+        const dt = lastFixTimeRef.current ? (now - lastFixTimeRef.current) / 1000 : 0;
+        const proj = weak
+          ? null
+          : projectOnTrack(
+              points,
+              trackIndex,
+              latitude,
+              longitude,
+              lastAlongRef.current,
+              // Fenêtre de plausibilité : 300 m + 12 m/s depuis le dernier relevé fiable.
+              lastAlongRef.current == null ? 500 : 300 + 12 * dt
+            );
+        if (proj) {
+          lastAlongRef.current = proj.along;
+          lastFixTimeRef.current = now;
+        }
 
         // Direction de déplacement : cap GPS si on avance vraiment, sinon
         // calculé depuis la position précédente (au moins 8 m parcourus).
@@ -554,21 +588,32 @@ export function GpxMap({
         const heading = headingRef.current;
 
         let direction: "ok" | "reverse" | null = null;
-        if (heading != null && proj.offTrack < 100) {
+        if (proj && heading != null && proj.offTrack < 100) {
           const diff = angleDiff(heading, proj.bearing);
           direction = diff < 60 ? "ok" : diff > 120 ? "reverse" : null;
         }
 
-        setGpsInfo({
-          along: proj.along,
-          remaining: Math.max(0, trackIndex.total - proj.along),
-          offTrack: proj.offTrack,
-          accuracy,
-          direction,
-        });
+        if (proj) {
+          const info: GpsInfo = {
+            along: proj.along,
+            remaining: Math.max(0, trackIndex.total - proj.along),
+            offTrack: proj.offTrack,
+            accuracy,
+            direction,
+            weak: false,
+          };
+          lastInfoRef.current = info;
+          setGpsInfo(info);
+        } else {
+          // Signal faible : on garde la dernière progression fiable, ou rien.
+          const info: GpsInfo = lastInfoRef.current
+            ? { ...lastInfoRef.current, accuracy, weak: true }
+            : { along: 0, remaining: trackIndex.total, offTrack: 0, accuracy, direction: null, weak: true };
+          setGpsInfo(info);
+        }
         setGpsStatus("on");
         setGpsError(null);
-        handleOffTrack(proj.offTrack, accuracy);
+        if (proj) handleOffTrack(proj.offTrack, accuracy);
 
         if (!L || !map) return;
 
@@ -823,7 +868,12 @@ export function GpxMap({
           {gpsStatus === "starting" && <p className="text-muted">Recherche de ta position…</p>}
           {gpsStatus === "on" && gpsInfo && (
             <>
-              {gpsInfo.offTrack > FAR_FROM_TRACK_M ? (
+              {gpsInfo.weak && !lastInfoRef.current ? (
+                <p className="text-ink">
+                  Signal GPS encore imprécis (±{Math.round(gpsInfo.accuracy)} m). Patiente quelques
+                  secondes, en extérieur…
+                </p>
+              ) : gpsInfo.offTrack > FAR_FROM_TRACK_M ? (
                 <p className="text-ink">
                   Tu es à {formatKm(gpsInfo.offTrack)} du parcours. Rejoins le tracé pour suivre ta
                   progression.
