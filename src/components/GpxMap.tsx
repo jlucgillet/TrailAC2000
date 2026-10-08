@@ -171,7 +171,9 @@ function projectOnTrack(
   let chosenGap = Infinity;
   for (const c of candidates) {
     if (c.dist > tolerance) continue;
-    const gap = hintMeters == null ? c.dist : Math.abs(c.along - hintMeters);
+    // Premier relevé (pas encore d'historique) : on suppose qu'on est au départ,
+    // ce qui évite de se retrouver « à l'arrivée » sur une boucle ou un aller-retour.
+    const gap = Math.abs(c.along - (hintMeters ?? 0));
     if (gap < chosenGap) {
       chosenGap = gap;
       chosen = c;
@@ -185,6 +187,7 @@ function formatKm(meters: number): string {
 }
 
 const OFF_TRACK_ALERT_M = 30;
+const FAR_FROM_TRACK_M = 150;
 
 /** Notification système (visible aussi écran verrouillé sur Android). */
 async function showOffTrackNotification(message: string) {
@@ -820,6 +823,12 @@ export function GpxMap({
           {gpsStatus === "starting" && <p className="text-muted">Recherche de ta position…</p>}
           {gpsStatus === "on" && gpsInfo && (
             <>
+              {gpsInfo.offTrack > FAR_FROM_TRACK_M ? (
+                <p className="text-ink">
+                  Tu es à {formatKm(gpsInfo.offTrack)} du parcours. Rejoins le tracé pour suivre ta
+                  progression.
+                </p>
+              ) : (
               <div className="flex items-end justify-between gap-4">
                 <div>
                   <p className="text-xs text-muted">Parcouru</p>
@@ -834,11 +843,16 @@ export function GpxMap({
                   </p>
                 </div>
               </div>
+              )}
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
                 <div
                   className="h-full bg-accent"
                   style={{
-                    width: `${Math.min(100, (gpsInfo.along / Math.max(1, trackIndex.total)) * 100)}%`,
+                    width: `${
+                      gpsInfo.offTrack > FAR_FROM_TRACK_M
+                        ? 0
+                        : Math.min(100, (gpsInfo.along / Math.max(1, trackIndex.total)) * 100)
+                    }%`,
                   }}
                 />
               </div>
