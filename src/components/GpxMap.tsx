@@ -184,6 +184,26 @@ function formatKm(meters: number): string {
   return `${(meters / 1000).toFixed(2).replace(".", ",")} km`;
 }
 
+const OFF_TRACK_ALERT_M = 30;
+
+/** Notification système (visible aussi écran verrouillé sur Android). */
+async function showOffTrackNotification(message: string) {
+  try {
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    const options = { body: message, tag: "off-track", renotify: true, vibrate: [300, 150, 300] };
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.showNotification("Trail AC2000", options as NotificationOptions);
+        return;
+      }
+    }
+    new Notification("Trail AC2000", options as NotificationOptions);
+  } catch {
+    /* pas critique */
+  }
+}
+
 type GpsStatus = "off" | "starting" | "on" | "error";
 type GpsInfo = {
   along: number;
@@ -239,6 +259,13 @@ export function GpxMap({
   const [gpsInfo, setGpsInfo] = useState<GpsInfo | null>(null);
   const [gpsActive, setGpsActive] = useState(false);
   const gpsActiveRef = useRef(false);
+  const [alertsOn, setAlertsOn] = useState(true);
+  const alertsOnRef = useRef(true);
+  alertsOnRef.current = alertsOn;
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const offCountRef = useRef(0);
+  const lastAlertRef = useRef(0);
+  const wasOffRef = useRef(false);
   gpsActiveRef.current = gpsActive;
   const trackLayersRef = useRef<import("leaflet").Polyline[]>([]);
   const redLayersRef = useRef<import("leaflet").Polyline[]>([]);
@@ -377,6 +404,83 @@ export function GpxMap({
     tileLayerRef.current.bringToBack();
   }, [basemap]);
 
+  /** Bips (WebAudio) : 3 bips aigus pour l'alerte, 1 bip grave pour le retour sur le tracé. */
+  function beep(kind: "alert" | "back") {
+    try {
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+      const count = kind === "alert" ? 3 : 1;
+      const freq = kind === "alert" ? 960 : 520;
+      for (let i = 0; i < count; i++) {
+        const t0 = ctx.currentTime + i * 0.3;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "square";
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.25);
+      }
+    } catch {
+      /* pas critique */
+    }
+  }
+
+  function triggerOffTrackAlert(distance: number) {
+    beep("alert");
+    try {
+      navigator.vibrate?.([400, 200, 400, 200, 400]);
+    } catch {
+      /* iOS : pas de vibration */
+    }
+    showOffTrackNotification(`Tu t'éloignes du tracé : ${Math.round(distance)} m. Fais demi-tour !`);
+  }
+
+  function handleOffTrack(offTrack: number, accuracy: number) {
+    // Position trop imprécise : on ne déclenche rien (faux positifs).
+    if (accuracy > 50) return;
+    if (offTrack > OFF_TRACK_ALERT_M) {
+      offCountRef.current += 1;
+      // Deux mesures consécutives hors tracé avant d'alerter.
+      if (offCountRef.current >= 2) {
+        // Une seule alerte par sortie de tracé ; elle se réarme au retour sur le tracé.
+        if (alertsOnRef.current && lastAlertRef.current === 0) {
+          lastAlertRef.current = Date.now();
+          triggerOffTrackAlert(offTrack);
+        }
+        wasOffRef.current = true;
+      }
+    } else {
+      offCountRef.current = 0;
+      if (wasOffRef.current) {
+        wasOffRef.current = false;
+        lastAlertRef.current = 0;
+        if (alertsOnRef.current) {
+          beep("back");
+          try {
+            navigator.vibrate?.(150);
+          } catch {
+            /* ignore */
+          }
+        }
+        try {
+          navigator.serviceWorker
+            ?.getRegistration()
+            .then((r) =>
+              r?.getNotifications({ tag: "off-track" }).then((ns) => ns.forEach((n) => n.close()))
+            )
+            .catch(() => {});
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
+
   // Mode suivi GPS : tracé rouge uni ; sinon, tracé nuancé selon la pente.
   function applyTrackStyle() {
     const map = mapRef.current;
@@ -411,6 +515,9 @@ export function GpxMap({
     }
 
     firstFixRef.current = true;
+    offCountRef.current = 0;
+    wasOffRef.current = false;
+    lastAlertRef.current = 0;
     lastAlongRef.current = null;
     prevPosRef.current = null;
     headingRef.current = null;
@@ -458,6 +565,7 @@ export function GpxMap({
         });
         setGpsStatus("on");
         setGpsError(null);
+        handleOffTrack(proj.offTrack, accuracy);
 
         if (!L || !map) return;
 
@@ -553,6 +661,22 @@ export function GpxMap({
 
   function toggleGps() {
     if (!gpsActive) {
+      // Doit se faire dans le clic : les navigateurs bloquent le son et les
+      // notifications sinon.
+      try {
+        const AC =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AC) {
+          audioCtxRef.current = audioCtxRef.current ?? new AC();
+          audioCtxRef.current.resume().catch(() => {});
+        }
+        if (typeof Notification !== "undefined" && Notification.permission === "default") {
+          Notification.requestPermission().catch(() => {});
+        }
+      } catch {
+        /* pas critique */
+      }
       setGpsError(null);
       setFollow(true);
       setGpsStatus("starting");
@@ -724,12 +848,22 @@ export function GpxMap({
               {gpsInfo.direction === "reverse" && (
                 <p className="mt-2 text-xs text-ink">↩️ Tu vas à contre-sens du tracé. Demi-tour ?</p>
               )}
-              {gpsInfo.offTrack > 100 && (
-                <p className="mt-2 text-xs text-ink">
-                  ⚠️ Tu es à {Math.round(gpsInfo.offTrack)} m du tracé.
+              {gpsInfo.offTrack > OFF_TRACK_ALERT_M && (
+                <p className="mt-2 rounded-lg bg-danger px-2 py-1.5 text-xs font-semibold text-white">
+                  ⚠️ Tu es à {Math.round(gpsInfo.offTrack)} m du tracé !
                 </p>
               )}
-              <p className="mt-1 text-xs text-muted">Précision GPS : ±{Math.round(gpsInfo.accuracy)} m</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <p className="text-xs text-muted">Précision GPS : ±{Math.round(gpsInfo.accuracy)} m</p>
+                <button
+                  type="button"
+                  onClick={() => setAlertsOn((v) => !v)}
+                  aria-pressed={alertsOn}
+                  className="shrink-0 rounded-md border border-border px-2 py-0.5 text-xs text-muted hover:text-ink"
+                >
+                  {alertsOn ? "🔔 Alerte activée" : "🔕 Alerte coupée"}
+                </button>
+              </div>
             </>
           )}
         </div>
