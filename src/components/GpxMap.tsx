@@ -266,7 +266,10 @@ export function GpxMap({
       if (cancelled || !containerRef.current) return;
       leafletRef.current = L;
 
-      const map = L.map(containerRef.current);
+      // Sur mobile (écran tactile), le pincement suffit : pas de boutons + / −.
+      const isTouch =
+        typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+      const map = L.map(containerRef.current, { zoomControl: !isTouch });
       mapRef.current = map;
 
       const base = BASEMAPS[basemap];
