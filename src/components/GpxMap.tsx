@@ -312,11 +312,11 @@ export function GpxMap({
         L.polyline(latlngs, { color: "#FFFFFF", weight: 9, opacity: 0.9 }),
         L.polyline(latlngs, { color: "#DC2626", weight: 5 }),
       ];
-      applyTrackStyle();
 
       addKmMarkers(L, map, points);
 
       map.fitBounds(bounds, { padding: [24, 24] });
+      applyTrackStyle();
 
       // Marqueurs vectoriels (pas L.marker) : évite le problème classique
       // des icônes par défaut de Leaflet cassées par les bundlers.
@@ -378,11 +378,13 @@ export function GpxMap({
   function applyTrackStyle() {
     const map = mapRef.current;
     if (!map) return;
+    try {
     const red = gpsActiveRef.current;
     trackLayersRef.current.forEach((l) => (red ? map.removeLayer(l) : l.addTo(map)));
     redLayersRef.current.forEach((l) => (red ? l.addTo(map) : map.removeLayer(l)));
-    if (!red) trackLayersRef.current.forEach((l) => l.bringToBack());
-    tileLayerRef.current?.bringToBack();
+    } catch {
+      /* ne doit jamais empêcher l'affichage de la carte */
+    }
   }
 
   useEffect(() => {
