@@ -61,6 +61,18 @@ export function TrackViewer({
           Télécharger le fichier GPX
         </a>
       )}
+
+      {gpxData && points.length > 1 && (
+        <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+          <p className="mb-1 font-semibold text-ink">📍 Suivre le parcours avec le GPS</p>
+          <p>
+            Appuie sur le bouton 📍 en haut à droite de la carte et autorise la localisation. Ta
+            position apparaît sur le tracé, avec les kilomètres parcourus et restants. Si tu
+            t&rsquo;éloignes de plus de 30&nbsp;m, ton téléphone bipe et vibre. Garde l&rsquo;écran
+            allumé et l&rsquo;appli ouverte : le suivi s&rsquo;arrête si tu la quittes.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
