@@ -13,7 +13,9 @@ export default function ConcurrentGuidePage() {
       <p className="mb-14 max-w-xl text-muted">
         Deux façons de chronométrer ta course : en scannant simplement les QR codes sur place
         (aucune connexion nécessaire), ou via ton espace personnel &laquo;&nbsp;Mon Espace&nbsp;&raquo;
-        pour retrouver l&rsquo;historique de toutes tes courses.
+        pour retrouver l&rsquo;historique de toutes tes courses. Tu peux aussi consulter les{" "}
+        <a href="#parcours" className="text-accent underline">parcours</a> et les suivre en direct
+        avec le GPS de ton téléphone.
       </p>
 
       {/* Méthode 1 */}
@@ -151,22 +153,18 @@ export default function ConcurrentGuidePage() {
             number={2}
             caption={
               <>
-                Tu vois <b className="text-ink">toutes tes courses</b>, tes meilleurs temps, et peux
-                rejoindre une nouvelle course active.
+                Tu vois <b className="text-ink">toutes tes courses</b> et tes meilleurs temps. Le menu
+                te donne accès à <b className="text-ink">Courses, Parcours, Guide</b> et Déconnexion.
               </>
             }
           >
-            <p className="mb-2 text-left text-sm font-medium">Bonjour, Camille</p>
+            <p className="mb-2 text-left text-sm font-medium">Bonjour Camille</p>
             <div className="mb-3 rounded-lg bg-accent px-2 py-1.5 text-center text-[10px] font-bold text-bg">
               Scanner
             </div>
-            <div className="mb-2 rounded-lg border border-border bg-surface p-2">
+            <div className="rounded-lg border border-border bg-surface p-2">
               <p className="text-[10px] font-semibold">Montée de Tallenay</p>
               <p className="text-[9px] text-muted">20/09 · Meilleur temps 00:47:32</p>
-            </div>
-            <div className="rounded-lg border border-border bg-surface p-2">
-              <p className="text-[10px] font-semibold">Rejoindre une course active</p>
-              <p className="text-[9px] text-muted">Trail de Nuit — disponible</p>
             </div>
           </GuideStep>
 
@@ -204,6 +202,176 @@ export default function ConcurrentGuidePage() {
               <p className="text-[9px] text-muted">00:47:32</p>
             </div>
           </GuideStep>
+        </div>
+      </section>
+
+      {/* Parcours */}
+      <section id="parcours" className="mt-16 scroll-mt-8">
+        <span className="mb-2 inline-block rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
+          Parcours
+        </span>
+        <h2 className="mb-1 font-display text-2xl font-semibold">
+          Consulter et suivre un parcours avec le GPS
+        </h2>
+        <p className="mb-8 text-muted">
+          La section &laquo;&nbsp;Parcours&nbsp;&raquo; de Mon Espace te permet de repérer un tracé
+          avant de partir, puis de te laisser guider en direct par le GPS de ton téléphone.
+        </p>
+
+        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
+          <GuideStep
+            number={1}
+            caption={
+              <>
+                Dans Mon Espace, ouvre le menu (☰ sur mobile) puis{" "}
+                <b className="text-ink">« Parcours »</b>. Les parcours sont classés du plus court au
+                plus long.
+              </>
+            }
+          >
+            <p className="mb-2 text-center font-display text-sm font-semibold">Parcours</p>
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-border bg-surface p-2">
+              <div className="h-8 w-8 shrink-0 rounded-md border border-border bg-bg" />
+              <div>
+                <p className="text-[10px] font-semibold">AC2000-5-120</p>
+                <p className="text-[9px] text-muted">5 km · 120 m D+</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-surface p-2">
+              <div className="h-8 w-8 shrink-0 rounded-md border border-border bg-bg" />
+              <div>
+                <p className="text-[10px] font-semibold">AC2000-7-167</p>
+                <p className="text-[9px] text-muted">7 km · 167 m D+</p>
+              </div>
+            </div>
+          </GuideStep>
+
+          <GuideStep
+            number={2}
+            caption={
+              <>
+                Choisis un parcours : carte, distance et dénivelé. Le tracé est{" "}
+                <b className="text-ink">rouge en montée, vert en descente</b>, avec des pastilles
+                tous les kilomètres. Tu peux changer le fond de carte, passer en plein écran ou
+                télécharger le GPX.
+              </>
+            }
+          >
+            <div className="mb-2 flex flex-1 items-center justify-center rounded-lg border border-border bg-bg p-2">
+              <div className="h-1.5 w-full rounded-full bg-gradient-to-r from-[#DC2626] via-[#9CA3AF] to-[#16A34A]" />
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-center text-[9px] text-muted">
+              <div className="rounded-md border border-border bg-surface py-1">7,1 km</div>
+              <div className="rounded-md border border-border bg-surface py-1">167 m D+</div>
+            </div>
+          </GuideStep>
+
+          <GuideStep
+            number={3}
+            caption={
+              <>
+                Sur place, appuie sur <b className="text-ink">« Démarrer »</b> en haut à droite de la
+                carte et <b className="text-ink">autorise la localisation</b>. Ta position (flèche
+                bleue) apparaît sur le tracé, qui passe en rouge uni, avec tes kilomètres parcourus
+                et restants.
+              </>
+            }
+          >
+            <div className="mb-3 self-end rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#15803D] shadow">
+              Démarrer
+            </div>
+            <div className="rounded-lg border border-border bg-surface p-2">
+              <div className="flex justify-between text-[9px] text-muted">
+                <span>Parcouru</span>
+                <span>Restant</span>
+              </div>
+              <div className="flex justify-between font-display text-sm font-semibold tabular-nums">
+                <span>2,40 km</span>
+                <span>4,70 km</span>
+              </div>
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-bg">
+                <div className="h-full w-1/3 bg-accent" />
+              </div>
+            </div>
+          </GuideStep>
+
+          <GuideStep
+            number={4}
+            caption={
+              <>
+                La <b className="text-ink">boussole</b> fait passer la carte du{" "}
+                <b className="text-ink">nord en haut</b> à ta <b className="text-ink">direction en
+                haut</b>. Si tu déplaces la carte, appuie sur{" "}
+                <b className="text-ink">« Recentrer »</b> pour revenir sur toi.
+              </>
+            }
+          >
+            <div className="mb-3 flex items-center justify-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow">
+                <svg viewBox="0 0 40 40" width="28" height="28" aria-hidden>
+                  <path d="M20 5 L27 20 L13 20 Z" fill="#E5484D" />
+                  <path d="M20 35 L27 20 L13 20 Z" fill="#9CA3AF" />
+                  <circle cx="20" cy="20" r="2.4" fill="#fff" stroke="#6B7280" strokeWidth="1" />
+                </svg>
+              </div>
+            </div>
+            <div className="mx-auto rounded-full bg-accent px-3 py-1 text-[10px] font-bold text-bg">
+              Recentrer
+            </div>
+          </GuideStep>
+
+          <GuideStep
+            number={5}
+            caption={
+              <>
+                Si tu t&rsquo;éloignes de <b className="text-ink">plus de 30&nbsp;m</b> du tracé, ton
+                téléphone <b className="text-ink">bipe, vibre</b> et affiche une notification. Une seule
+                alerte par sortie ; un bip grave te confirme que tu es revenu sur le tracé.
+              </>
+            }
+          >
+            <div className="flex flex-1 flex-col items-center justify-center gap-2">
+              <p className="rounded-lg bg-[#DC2626] px-2 py-1.5 text-center text-[10px] font-semibold text-white">
+                ⚠️ Tu es à 42 m du tracé !
+              </p>
+              <p className="text-center text-[9px] text-muted">🔔 Alerte activée</p>
+            </div>
+          </GuideStep>
+        </div>
+
+        <div className="mt-8 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">🌤️ Pense à sortir pour avoir du signal</p>
+            <p className="text-sm text-muted">
+              Au début, le GPS peut être imprécis : le message &laquo;&nbsp;Signal GPS encore
+              imprécis&nbsp;&raquo; s&rsquo;affiche. Patiente quelques secondes, en extérieur, le temps
+              que la précision s&rsquo;améliore.
+            </p>
+          </div>
+          <div className="rounded-xl border border-accent/40 bg-accent/5 p-5">
+            <p className="mb-1 font-medium">📱 Écran allumé, appli ouverte</p>
+            <p className="text-sm text-muted">
+              Le suivi GPS ne fonctionne que{" "}
+              <b className="text-ink">tant que l&rsquo;appli reste ouverte au premier plan</b>. Si tu
+              la quittes ou verrouilles ton téléphone, le suivi et les alertes s&rsquo;arrêtent. Pense à
+              avoir assez de batterie.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">🍎 Sur iPhone</p>
+            <p className="text-sm text-muted">
+              Safari ne permet pas de faire vibrer le téléphone : tu as les bips et la notification.
+              Les notifications demandent d&rsquo;avoir installé l&rsquo;app sur l&rsquo;écran
+              d&rsquo;accueil (voir le guide d&rsquo;installation).
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">🔕 Couper l&rsquo;alerte</p>
+            <p className="text-sm text-muted">
+              En groupe, tu peux couper le son et la vibration avec le bouton{" "}
+              &laquo;&nbsp;Alerte activée&nbsp;&raquo; du panneau. Le message rouge reste affiché.
+            </p>
+          </div>
         </div>
       </section>
 
