@@ -4,9 +4,17 @@ import { GuideStep } from "@/components/PhoneMockup";
 export default function InstallationGuidePage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">
-      <Link href="/guide" className="text-sm text-muted underline">
-        ← Tous les guides
-      </Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/guide" className="text-sm text-muted underline">
+          ← Tous les guides
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink"
+        >
+          <span aria-hidden>🏠</span> Retour à l&rsquo;accueil
+        </Link>
+      </div>
 
       <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-accent">Guide concurrent</p>
       <h1 className="mb-3 font-display text-4xl font-semibold">Installer l&rsquo;app sur ton téléphone</h1>
@@ -158,6 +166,15 @@ export default function InstallationGuidePage() {
         le navigateur, sans installation. L&rsquo;installer est juste plus pratique : icône dédiée,
         ouverture instantanée, plein écran.
       </p>
+
+      <div className="mt-10 flex justify-center">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink"
+        >
+          <span aria-hidden>🏠</span> Retour à l&rsquo;accueil
+        </Link>
+      </div>
     </div>
   );
 }

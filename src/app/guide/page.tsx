@@ -3,6 +3,14 @@ import Link from "next/link";
 export default function GuideIndexPage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
+      <div className="mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink"
+        >
+          <span aria-hidden>🏠</span> Retour à l&rsquo;accueil
+        </Link>
+      </div>
       <h1 className="mb-2 font-display text-4xl font-semibold">Guides</h1>
       <p className="mb-10 text-muted">Tout ce qu&rsquo;il faut savoir pour utiliser Trail AC2000.</p>
 
