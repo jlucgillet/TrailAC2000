@@ -960,9 +960,26 @@ export function GpxMap({
             aria-pressed={fullscreen}
             aria-label={fullscreen ? "Quitter le plein écran" : "Plein écran"}
             title={fullscreen ? "Quitter le plein écran" : "Plein écran"}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ background: "#FFFFFF", boxShadow: "0 1px 5px rgba(0,0,0,0.4)" }}
           >
-            <span aria-hidden>{fullscreen ? "✕" : "⛶"}</span>
+            <svg
+              viewBox="0 0 24 24"
+              width="20"
+              height="20"
+              aria-hidden
+              fill="none"
+              stroke="#374151"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {fullscreen ? (
+                <path d="M9 4v5H4 M15 4v5h5 M9 20v-5H4 M15 20v-5h5" />
+              ) : (
+                <path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5" />
+              )}
+            </svg>
           </button>
         )}
 
@@ -973,9 +990,14 @@ export function GpxMap({
             aria-pressed={gpsActive}
             aria-label={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
             title={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
-            className={`flex h-9 items-center justify-center rounded-lg border px-3 text-sm font-semibold shadow-md backdrop-blur-sm hover:border-ink ${
-              gpsActive ? "border-accent bg-accent text-bg" : "border-border bg-bg/90 text-ink"
-            } ${gpsStatus === "starting" ? "animate-pulse" : ""}`}
+            className={`flex h-10 items-center justify-center rounded-full px-4 text-sm font-bold ${
+              gpsStatus === "starting" ? "animate-pulse" : ""
+            }`}
+            style={{
+              background: "#FFFFFF",
+              color: gpsActive ? "#DC2626" : "#15803D",
+              boxShadow: "0 1px 5px rgba(0,0,0,0.4)",
+            }}
           >
             {gpsActive ? "Arrêter" : "Démarrer"}
           </button>
