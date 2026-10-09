@@ -89,7 +89,7 @@ function addKmMarkers(
 
       const icon = L.divIcon({
         className: "",
-        html: `<div style="background:#0B1410;color:#F5F7F3;border:2px solid #FFFFFF;border-radius:9999px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.5);">${nextKm}</div>`,
+        html: `<div style="background:#0B1410;color:#F5F7F3;border:2px solid #FFFFFF;border-radius:9999px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;font-family:system-ui,sans-serif;box-shadow:0 1px 3px rgba(0,0,0,0.5);transform:rotate(var(--unrot,0deg));transition:transform .4s linear;">${nextKm}</div>`,
         iconSize: [24, 24],
         iconAnchor: [12, 12],
       });
@@ -294,6 +294,11 @@ export function GpxMap({
   const accuracyRef = useRef<import("leaflet").Circle | null>(null);
   const lastAlongRef = useRef<number | null>(null);
   const firstFixRef = useRef(true);
+  const [orientation, setOrientation] = useState<"north" | "heading">("north");
+  const orientationRef = useRef<"north" | "heading">("north");
+  orientationRef.current = orientation;
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const rotRef = useRef(0);
 
   const trackIndex = useMemo(() => buildTrackIndex(points), [points]);
 
@@ -498,6 +503,78 @@ export function GpxMap({
     }
   }
 
+  /**
+   * Orientation « direction en haut » : Leaflet ne sait pas tourner la carte,
+   * on fait donc pivoter son conteneur (agrandi pour couvrir les coins). Les
+   * pastilles de km sont contre-pivotées pour rester lisibles.
+   */
+  function applyLayout() {
+    const el = containerRef.current;
+    const wrap = wrapperRef.current;
+    const map = mapRef.current;
+    if (!el || !wrap) return;
+    const rotated = orientationRef.current === "heading";
+    if (rotated) {
+      const W = wrap.clientWidth;
+      const H = wrap.clientHeight;
+      const D = Math.ceil(Math.hypot(W, H));
+      Object.assign(el.style, {
+        position: "absolute",
+        width: `${D}px`,
+        height: `${D}px`,
+        left: `${(W - D) / 2}px`,
+        top: `${(H - D) / 2}px`,
+        transform: `rotate(${rotRef.current}deg)`,
+        transition: "transform 0.4s linear",
+      });
+      el.style.setProperty("--unrot", `${-rotRef.current}deg`);
+      wrap.style.touchAction = "none";
+    } else {
+      rotRef.current = 0;
+      Object.assign(el.style, {
+        position: "relative",
+        width: "",
+        height: "",
+        left: "",
+        top: "",
+        transform: "",
+        transition: "",
+      });
+      el.style.removeProperty("--unrot");
+      wrap.style.touchAction = "";
+    }
+    const controls = el.querySelector<HTMLElement>(".leaflet-control-container");
+    if (controls) controls.style.display = rotated ? "none" : "";
+    if (map) {
+      if (rotated) {
+        map.dragging.disable();
+        map.options.touchZoom = "center";
+        map.options.scrollWheelZoom = "center";
+        map.options.doubleClickZoom = "center";
+      } else {
+        map.dragging.enable();
+        map.options.touchZoom = true;
+        map.options.scrollWheelZoom = true;
+        map.options.doubleClickZoom = true;
+      }
+      map.invalidateSize();
+    }
+  }
+
+  /** Fait pivoter la carte pour que `heading` (direction de marche) soit en haut. */
+  function setMapRotation(heading: number) {
+    const el = containerRef.current;
+    if (!el || orientationRef.current !== "heading") return;
+    const cur = rotRef.current;
+    // Chemin le plus court (évite un tour complet quand on passe de 359° à 1°).
+    const diff = ((((-heading - cur) % 360) + 540) % 360) - 180;
+    if (Math.abs(diff) < 4) return;
+    const next = cur + diff;
+    rotRef.current = next;
+    el.style.transform = `rotate(${next}deg)`;
+    el.style.setProperty("--unrot", `${-next}deg`);
+  }
+
   // Mode suivi GPS : tracé rouge uni ; sinon, tracé nuancé selon la pente.
   function applyTrackStyle() {
     const map = mapRef.current;
@@ -586,6 +663,7 @@ export function GpxMap({
           headingRef.current = null;
         }
         const heading = headingRef.current;
+        if (heading != null && orientationRef.current === "heading") setMapRotation(heading);
 
         let direction: "ok" | "reverse" | null = null;
         if (proj && heading != null && proj.offTrack < 100) {
@@ -697,11 +775,20 @@ export function GpxMap({
     const map = mapRef.current;
     const onDrag = () => setFollow(false);
     map?.on("dragstart", onDrag);
+    // Si la carte est décalée par un autre geste (zoom...), on propose « Recentrer ».
+    const onMoveEnd = () => {
+      const m = markerRef.current;
+      if (!map || !m || !followRef.current) return;
+      const p = map.latLngToContainerPoint(m.getLatLng());
+      if (p.distanceTo(map.getSize().divideBy(2)) > 80) setFollow(false);
+    };
+    map?.on("moveend", onMoveEnd);
 
     return () => {
       navigator.geolocation.clearWatch(watchId);
       document.removeEventListener("visibilitychange", onVisible);
       map?.off("dragstart", onDrag);
+      map?.off("moveend", onMoveEnd);
       wakeLock?.release().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -733,6 +820,8 @@ export function GpxMap({
       setGpsActive(false);
       setGpsStatus("off");
       setGpsInfo(null);
+      setOrientation("north");
+      setFollow(true);
       markerRef.current?.remove();
       accuracyRef.current?.remove();
       markerRef.current = null;
@@ -744,6 +833,10 @@ export function GpxMap({
     setFollow(true);
     const m = markerRef.current;
     if (m && mapRef.current) mapRef.current.panTo(m.getLatLng(), { animate: true });
+  }
+
+  function toggleOrientation() {
+    setOrientation((o) => (o === "north" ? "heading" : "north"));
   }
 
   // Le conteneur change de taille en entrant/sortant du plein écran :
@@ -768,6 +861,76 @@ export function GpxMap({
     };
   }, [fullscreen]);
 
+  // Changement d'orientation (nord / direction en haut).
+  useEffect(() => {
+    applyLayout();
+    if (orientation === "heading" && headingRef.current != null) {
+      setMapRotation(headingRef.current);
+    }
+    const m = markerRef.current;
+    if (m && mapRef.current && followRef.current) {
+      mapRef.current.setView(m.getLatLng(), mapRef.current.getZoom(), { animate: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orientation]);
+
+  const hasMap = points.length >= 2;
+
+  // Le conteneur pivoté dépend de la taille de la zone visible.
+  useEffect(() => {
+    const wrap = wrapperRef.current;
+    if (!hasMap || !wrap || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (orientationRef.current === "heading") applyLayout();
+    });
+    ro.observe(wrap);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMap]);
+
+  // En mode « direction en haut », le déplacement de la carte au doigt est géré
+  // ici : les gestes de Leaflet ne tiennent pas compte de la rotation.
+  useEffect(() => {
+    const wrap = wrapperRef.current;
+    if (orientation !== "heading" || !wrap) return;
+    const pointers = new Map<number, { x: number; y: number }>();
+    let moved = 0;
+
+    function onDown(e: PointerEvent) {
+      if ((e.target as HTMLElement).closest("button, a, [data-no-pan]")) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      moved = 0;
+    }
+    function onMove(e: PointerEvent) {
+      const p = pointers.get(e.pointerId);
+      if (!p) return;
+      const dx = e.clientX - p.x;
+      const dy = e.clientY - p.y;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      if (pointers.size !== 1) return; // pincement : géré par Leaflet
+      moved += Math.abs(dx) + Math.abs(dy);
+      if (moved > 6) setFollow(false);
+      const r = (rotRef.current * Math.PI) / 180;
+      const cx = dx * Math.cos(r) + dy * Math.sin(r);
+      const cy = -dx * Math.sin(r) + dy * Math.cos(r);
+      mapRef.current?.panBy([-cx, -cy], { animate: false });
+    }
+    function onUp(e: PointerEvent) {
+      pointers.delete(e.pointerId);
+    }
+    wrap.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      wrap.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [orientation]);
+
   if (points.length < 2) {
     return <p className="text-muted">Aucune trace à afficher.</p>;
   }
@@ -776,9 +939,10 @@ export function GpxMap({
 
   return (
     <div
+      ref={wrapperRef}
       className={
         fullscreen
-          ? "fixed inset-0 z-[90] bg-bg"
+          ? "fixed inset-0 z-[90] overflow-hidden bg-bg"
           : `relative ${normalHeight} w-full overflow-hidden rounded-xl border border-border`
       }
     >
@@ -805,25 +969,34 @@ export function GpxMap({
             aria-pressed={gpsActive}
             aria-label={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
             title={!gpsActive ? "Activer le suivi GPS" : "Arrêter le suivi GPS"}
-            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-base shadow-md backdrop-blur-sm hover:border-ink ${
-              gpsActive
-                ? "border-accent bg-accent text-bg"
-                : "border-border bg-bg/90"
+            className={`flex h-9 items-center justify-center rounded-lg border px-3 text-sm font-semibold shadow-md backdrop-blur-sm hover:border-ink ${
+              gpsActive ? "border-accent bg-accent text-bg" : "border-border bg-bg/90 text-ink"
             } ${gpsStatus === "starting" ? "animate-pulse" : ""}`}
           >
-            <span aria-hidden>📍</span>
+            {gpsActive ? "Arrêter" : "Démarrer"}
           </button>
         )}
 
-        {gpsControl && gpsStatus === "on" && !follow && (
+        {gpsControl && gpsActive && (
           <button
             type="button"
-            onClick={recenter}
-            aria-label="Recentrer sur ma position"
-            title="Recentrer sur ma position"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
+            onClick={toggleOrientation}
+            aria-pressed={orientation === "heading"}
+            aria-label={
+              orientation === "north"
+                ? "Orientation : nord en haut. Passer en direction en haut"
+                : "Orientation : direction en haut. Passer en nord en haut"
+            }
+            title={
+              orientation === "north"
+                ? "Nord en haut (toucher pour : direction en haut)"
+                : "Direction en haut (toucher pour : nord en haut)"
+            }
+            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-base shadow-md backdrop-blur-sm hover:border-ink ${
+              orientation === "heading" ? "border-accent bg-accent text-bg" : "border-border bg-bg/90"
+            }`}
           >
-            <span aria-hidden>🎯</span>
+            <span aria-hidden>🧭</span>
           </button>
         )}
 
@@ -862,8 +1035,26 @@ export function GpxMap({
         )}
       </div>
 
+      {gpsControl && orientation === "heading" && (
+        <div
+          className="absolute left-2 top-2 z-[1000] rounded bg-bg/70 px-1 text-[10px] text-muted"
+          dangerouslySetInnerHTML={{ __html: BASEMAPS[basemap].attribution }}
+        />
+      )}
+
       {gpsControl && gpsStatus !== "off" && (
-        <div className="absolute inset-x-3 bottom-3 z-[1000] rounded-xl border border-border bg-bg/95 p-3 text-sm shadow-lg backdrop-blur-sm sm:max-w-sm">
+        <div className="absolute inset-x-3 bottom-3 z-[1000] flex flex-col items-end gap-2 sm:max-w-sm">
+        {gpsStatus === "on" && !follow && (
+          <button
+            type="button"
+            onClick={recenter}
+            aria-label="Recentrer sur ma position"
+            className="rounded-full border border-accent bg-accent px-4 py-2 text-sm font-semibold text-bg shadow-lg"
+          >
+            Recentrer
+          </button>
+        )}
+        <div className="w-full rounded-xl border border-border bg-bg/95 p-3 text-sm shadow-lg backdrop-blur-sm">
           {gpsStatus === "error" && <p className="text-ink">{gpsError}</p>}
           {gpsStatus === "starting" && <p className="text-muted">Recherche de ta position…</p>}
           {gpsStatus === "on" && gpsInfo && (
@@ -930,6 +1121,7 @@ export function GpxMap({
               </div>
             </>
           )}
+        </div>
         </div>
       )}
     </div>
