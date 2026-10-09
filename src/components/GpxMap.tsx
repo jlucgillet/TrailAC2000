@@ -299,6 +299,7 @@ export function GpxMap({
   orientationRef.current = orientation;
   const wrapperRef = useRef<HTMLDivElement>(null);
   const rotRef = useRef(0);
+  const [compassRot, setCompassRot] = useState(0);
 
   const trackIndex = useMemo(() => buildTrackIndex(points), [points]);
 
@@ -528,6 +529,7 @@ export function GpxMap({
         transition: "transform 0.4s linear",
       });
       el.style.setProperty("--unrot", `${-rotRef.current}deg`);
+      setCompassRot(rotRef.current);
       wrap.style.touchAction = "none";
     } else {
       rotRef.current = 0;
@@ -541,6 +543,7 @@ export function GpxMap({
         transition: "",
       });
       el.style.removeProperty("--unrot");
+      setCompassRot(0);
       wrap.style.touchAction = "";
     }
     const controls = el.querySelector<HTMLElement>(".leaflet-control-container");
@@ -573,6 +576,7 @@ export function GpxMap({
     rotRef.current = next;
     el.style.transform = `rotate(${next}deg)`;
     el.style.setProperty("--unrot", `${-next}deg`);
+    setCompassRot(next);
   }
 
   // Mode suivi GPS : tracé rouge uni ; sinon, tracé nuancé selon la pente.
@@ -992,11 +996,27 @@ export function GpxMap({
                 ? "Nord en haut (toucher pour : direction en haut)"
                 : "Direction en haut (toucher pour : nord en haut)"
             }
-            className={`flex h-9 w-9 items-center justify-center rounded-lg border text-base shadow-md backdrop-blur-sm hover:border-ink ${
-              orientation === "heading" ? "border-accent bg-accent text-bg" : "border-border bg-bg/90"
-            }`}
+            className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{
+              background: "#FFFFFF",
+              boxShadow:
+                orientation === "heading"
+                  ? "0 0 0 2px #2563EB, 0 1px 5px rgba(0,0,0,0.4)"
+                  : "0 1px 5px rgba(0,0,0,0.4)",
+            }}
           >
-            <span aria-hidden>🧭</span>
+            {/* Aiguille façon Google Maps : pointe rouge = nord */}
+            <svg
+              viewBox="0 0 40 40"
+              width="34"
+              height="34"
+              aria-hidden
+              style={{ transform: `rotate(${compassRot}deg)`, transition: "transform 0.4s linear" }}
+            >
+              <path d="M20 5 L27 20 L13 20 Z" fill="#E5484D" />
+              <path d="M20 35 L27 20 L13 20 Z" fill="#9CA3AF" />
+              <circle cx="20" cy="20" r="2.4" fill="#FFFFFF" stroke="#6B7280" strokeWidth="1" />
+            </svg>
           </button>
         )}
 
@@ -1008,12 +1028,30 @@ export function GpxMap({
               aria-expanded={pickerOpen}
               aria-label="Changer le fond de carte"
               title="Changer le fond de carte"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg/90 text-base shadow-md backdrop-blur-sm hover:border-ink"
+              className="flex h-10 w-10 items-center justify-center rounded-full"
+              style={{ background: "#FFFFFF", boxShadow: "0 1px 5px rgba(0,0,0,0.4)" }}
             >
-              <span aria-hidden>🗺️</span>
+              <svg
+                viewBox="0 0 24 24"
+                width="22"
+                height="22"
+                aria-hidden
+                fill="none"
+                stroke="#374151"
+                strokeWidth="2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              >
+                <path d="M12 3 L2.5 8.5 L12 14 L21.5 8.5 Z" />
+                <path d="M2.5 12.5 L12 18 L21.5 12.5" />
+                <path d="M2.5 16 L12 21.5 L21.5 16" />
+              </svg>
             </button>
             {pickerOpen && (
-              <div className="absolute right-0 top-full mt-1 w-40 overflow-hidden rounded-lg border border-border bg-bg shadow-lg">
+              <div
+                className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-lg"
+                style={{ background: "#FFFFFF", boxShadow: "0 2px 8px rgba(0,0,0,0.35)" }}
+              >
                 {(Object.keys(BASEMAPS) as BasemapKey[]).map((key) => (
                   <button
                     key={key}
@@ -1022,9 +1060,12 @@ export function GpxMap({
                       setBasemap(key);
                       setPickerOpen(false);
                     }}
-                    className={`block w-full px-3 py-2 text-left text-sm hover:bg-surface ${
-                      key === basemap ? "text-accent" : "text-ink"
-                    }`}
+                    className="block w-full px-3 py-2 text-left text-sm"
+                    style={{
+                      color: key === basemap ? "#15803D" : "#1F2937",
+                      fontWeight: key === basemap ? 700 : 400,
+                      background: key === basemap ? "#F0FDF4" : "#FFFFFF",
+                    }}
                   >
                     {BASEMAPS[key].label}
                   </button>
