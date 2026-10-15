@@ -54,7 +54,11 @@ export function PublicTrackView({
         </div>
       </div>
 
-      <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} basemapControl />
+      <GpxMap
+        points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))}
+        fullscreenControl
+        basemapControl
+      />
 
       <a
         href={resolvedDownloadPath}
