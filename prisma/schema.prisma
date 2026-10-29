@@ -123,6 +123,18 @@ model Participant {
   @@map("participants")
 }
 
+model AthletePhoto {
+  id              String   @id @default(uuid())
+  phoneNormalized String   @unique
+  data            Bytes
+  contentType     String   @default("image/jpeg")
+  shared          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("athlete_photos")
+}
+
 model Run {
   id String @id @default(uuid())
 

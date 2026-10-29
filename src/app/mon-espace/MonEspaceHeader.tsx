@@ -8,6 +8,7 @@ import { AthleteLogoutButton } from "./AthleteLogoutButton";
 const NAV_LINKS = [
   { href: "/mon-espace", label: "Courses", icon: "🏁" },
   { href: "/mon-espace/parcours", label: "Parcours", icon: "🗺️" },
+  { href: "/mon-espace/profil", label: "Profil", icon: "👤" },
   { href: "/guide", label: "Guide", icon: "📖" },
 ];
 

@@ -83,7 +83,7 @@ export function RaceFiche({
       {results.length === 0 ? (
         <p className="text-muted">Aucun résultat pour le moment.</p>
       ) : (
-        <ResultsTable rows={results} hideBib hideCategory />
+        <ResultsTable rows={results} hideBib hideCategory showPhotos />
       )}
 
       <Link

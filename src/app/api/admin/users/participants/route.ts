@@ -26,8 +26,15 @@ export async function GET(request: NextRequest) {
     take: 300,
   });
 
+  const photos = await prisma.athletePhoto.findMany({
+    where: { phoneNormalized: { in: participants.map((p) => p.phoneNormalized) } },
+    select: { id: true, phoneNormalized: true },
+  });
+  const photoByPhone = new Map(photos.map((ph) => [ph.phoneNormalized, ph.id]));
+
   return NextResponse.json({
     participants: participants.map((p) => ({
+      photoId: photoByPhone.get(p.phoneNormalized) ?? null,
       id: p.id,
       raceId: p.race.id,
       raceName: p.race.name,

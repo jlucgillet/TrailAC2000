@@ -30,6 +30,13 @@ export default async function RaceFichePage({
     include: { runs: true },
   });
 
+  const phones = participants.map((p) => p.phoneNormalized);
+  const photos = await prisma.athletePhoto.findMany({
+    where: { phoneNormalized: { in: phones }, shared: true },
+    select: { id: true, phoneNormalized: true },
+  });
+  const photoByPhone = new Map(photos.map((ph) => [ph.phoneNormalized, ph.id]));
+
   const results: ResultRow[] = participants
     .map((p) => ({ p, run: pickDisplayRun(p.runs) }))
     .filter(({ run }) => run?.status === "finished")
@@ -40,6 +47,9 @@ export default async function RaceFichePage({
       category: p.category,
       status: "finished",
       durationMs: run!.durationMs !== null ? Number(run!.durationMs) : null,
+      photoUrl: photoByPhone.has(p.phoneNormalized)
+        ? `/api/photos/${photoByPhone.get(p.phoneNormalized)}`
+        : null,
     }))
     .sort((a, b) => (a.durationMs ?? Infinity) - (b.durationMs ?? Infinity))
     .map((row, i) => ({ ...row, position: i + 1 }));

@@ -11,6 +11,8 @@ export type ResultRow = {
   finishTimestamp?: string | null;
   phone?: string | null;
   participantId?: string;
+  /** URL de la photo de profil (si partagée). */
+  photoUrl?: string | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -36,6 +38,7 @@ export function ResultsTable({
   showPhone = false,
   hideBib = false,
   hideCategory = false,
+  showPhotos = false,
   renderActions,
   sortKey,
   sortDir,
@@ -48,6 +51,8 @@ export function ResultsTable({
   hideBib?: boolean;
   /** Masque la colonne Catégorie. */
   hideCategory?: boolean;
+  /** Affiche la photo de profil (ou les initiales) devant le nom. */
+  showPhotos?: boolean;
   renderActions?: (row: ResultRow) => React.ReactNode;
   /** Fournir sortKey/sortDir/onSortChange rend les en-têtes cliquables (usage admin). */
   sortKey?: ResultSortKey;
@@ -108,7 +113,16 @@ export function ResultsTable({
             <tr key={i} className="hover:bg-surface/60">
               <td className="px-4 py-3 tabular-nums">{row.position ?? "—"}</td>
               {!hideBib && <td className="px-4 py-3 tabular-nums">{row.bibNumber ?? "—"}</td>}
-              <td className="px-4 py-3">{row.displayName}</td>
+              <td className="px-4 py-3">
+                {showPhotos ? (
+                  <div className="flex items-center gap-3">
+                    <Avatar url={row.photoUrl} name={row.displayName} />
+                    <span>{row.displayName}</span>
+                  </div>
+                ) : (
+                  row.displayName
+                )}
+              </td>
               {showPhone && (
                 <td className="px-4 py-3 tabular-nums text-muted">{row.phone ?? "—"}</td>
               )}
@@ -152,6 +166,32 @@ function StatusPill({ status }: { status: string }) {
   return (
     <span className={`rounded-full px-3 py-1 text-xs font-medium ${styles[status] ?? ""}`}>
       {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+function Avatar({ url, name }: { url?: string | null; name: string }) {
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return (
+      <img
+        src={url}
+        alt=""
+        loading="lazy"
+        className="h-8 w-8 shrink-0 rounded-full border border-border object-cover"
+      />
+    );
+  }
+  const initials =
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]!.toUpperCase())
+      .join("") || "?";
+  return (
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-surface text-xs font-medium text-muted">
+      {initials}
     </span>
   );
 }

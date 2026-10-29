@@ -41,6 +41,12 @@ export function GlobalParticipantsTab() {
     mutate();
   }
 
+  async function handleRemovePhoto(photoId: string, name: string) {
+    if (!confirm(`Supprimer la photo de profil de ${name} ?`)) return;
+    await fetch(`/api/admin/photos/${photoId}`, { method: "DELETE" });
+    mutate();
+  }
+
   const participants = data?.participants ?? [];
 
   const raceOptions = useMemo(() => {
@@ -138,7 +144,15 @@ export function GlobalParticipantsTab() {
                         {p.raceName}
                       </Link>
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="flex flex-wrap gap-2 px-4 py-3">
+                      {p.photoId && (
+                        <button
+                          onClick={() => handleRemovePhoto(p.photoId, name)}
+                          className="rounded-lg border border-border px-3 py-1.5 text-xs"
+                        >
+                          Retirer la photo
+                        </button>
+                      )}
                       <button
                         onClick={() => handleRemove(p.raceId, p.id, name)}
                         className="rounded-lg border border-danger px-3 py-1.5 text-xs text-danger"
