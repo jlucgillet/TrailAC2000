@@ -54,8 +54,19 @@ export default async function RaceFichePage({
     .sort((a, b) => (a.durationMs ?? Infinity) - (b.durationMs ?? Infinity))
     .map((row, i) => ({ ...row, position: i + 1 }));
 
+  const registered = participants
+    .map((p) => ({
+      id: p.id,
+      name: publicName(p),
+      photoUrl: photoByPhone.has(p.phoneNormalized)
+        ? `/api/photos/${photoByPhone.get(p.phoneNormalized)}`
+        : null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
   return (
     <RaceFiche
+      registered={registered}
       raceId={race.id}
       name={race.name}
       location={race.location}

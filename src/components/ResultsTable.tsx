@@ -170,7 +170,7 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
-function Avatar({ url, name }: { url?: string | null; name: string }) {
+export function Avatar({ url, name }: { url?: string | null; name: string }) {
   if (url) {
     // eslint-disable-next-line @next/next/no-img-element
     return (

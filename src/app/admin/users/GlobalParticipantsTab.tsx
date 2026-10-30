@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
+import { Avatar } from "@/components/ResultsTable";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -136,7 +137,12 @@ export function GlobalParticipantsTab() {
                 const name = [p.firstName, p.lastName].filter(Boolean).join(" ") || "—";
                 return (
                   <tr key={p.id}>
-                    <td className="px-4 py-3">{name}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar url={p.photoId ? `/api/photos/${p.photoId}` : null} name={name === "—" ? "" : name} />
+                        <span>{name}</span>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
                     <td className="px-4 py-3 tabular-nums">{p.bibNumber ?? "—"}</td>
                     <td className="px-4 py-3">

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
-import { ResultsTable, type ResultRow } from "@/components/ResultsTable";
+import { ResultsTable, Avatar, type ResultRow } from "@/components/ResultsTable";
 
 export function RaceFiche({
   raceId,
@@ -13,6 +13,7 @@ export function RaceFiche({
   elevationGainM,
   gpxData,
   results,
+  registered = [],
 }: {
   raceId: string;
   name: string;
@@ -21,6 +22,7 @@ export function RaceFiche({
   elevationGainM: number | null;
   gpxData: string | null;
   results: ResultRow[];
+  registered?: { id: string; name: string; photoUrl: string | null }[];
 }) {
   const points = gpxData ? parseGpxPoints(gpxData) : [];
 
@@ -84,6 +86,25 @@ export function RaceFiche({
         <p className="text-muted">Aucun résultat pour le moment.</p>
       ) : (
         <ResultsTable rows={results} hideBib hideCategory showPhotos />
+      )}
+
+      {registered.length > 0 && (
+        <>
+          <h2 className="mb-4 mt-10 font-display text-2xl font-semibold">
+            Concurrents inscrits ({registered.length})
+          </h2>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {registered.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center gap-3 rounded-xl border border-border px-3 py-2 text-sm"
+              >
+                <Avatar url={r.photoUrl} name={r.name} />
+                <span className="truncate">{r.name}</span>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
 
       <Link

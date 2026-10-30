@@ -18,12 +18,19 @@ export async function GET(
     include: { runs: true },
   });
 
+  const photos = await prisma.athletePhoto.findMany({
+    where: { phoneNormalized: { in: participants.map((p) => p.phoneNormalized) } },
+    select: { id: true, phoneNormalized: true },
+  });
+  const photoByPhone = new Map(photos.map((ph) => [ph.phoneNormalized, ph.id]));
+
   const rows = participants.map((p) => {
     // Le classement retient le MEILLEUR essai terminé de chaque concurrent
     // (pas le dernier) ; à défaut, son dernier essai pour afficher le statut.
     const run = pickDisplayRun(p.runs);
     return {
       participantId: p.id,
+      photoId: photoByPhone.get(p.phoneNormalized) ?? null,
       runId: run?.id ?? null,
       displayName: [p.firstName, p.lastName].filter(Boolean).join(" ") || "—",
       firstName: p.firstName,

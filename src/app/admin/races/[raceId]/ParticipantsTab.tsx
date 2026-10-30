@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import useSWR from "swr";
+import { Avatar } from "@/components/ResultsTable";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -12,6 +13,7 @@ type Participant = {
   bibNumber: string | null;
   category: string | null;
   phoneNormalized: string;
+  photoId?: string | null;
 };
 
 type SortKey = "bibNumber" | "name" | "category" | "phoneNormalized";
@@ -60,6 +62,12 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
       alert(data.error ?? "Erreur lors de la suppression.");
       return;
     }
+    mutate();
+  }
+
+  async function handleRemovePhoto(photoId: string, name: string) {
+    if (!confirm(`Retirer la photo de ${name || "ce concurrent"} ?`)) return;
+    await fetch(`/api/admin/photos/${photoId}`, { method: "DELETE" });
     mutate();
   }
 
@@ -169,7 +177,15 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
               ) : (
                 <tr key={p.id}>
                   <td className="px-4 py-3 tabular-nums">{p.bibNumber ?? "—"}</td>
-                  <td className="px-4 py-3">{[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar
+                        url={p.photoId ? `/api/photos/${p.photoId}` : null}
+                        name={[p.firstName, p.lastName].filter(Boolean).join(" ")}
+                      />
+                      <span>{[p.firstName, p.lastName].filter(Boolean).join(" ") || "—"}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-muted">{p.category ?? "—"}</td>
                   <td className="px-4 py-3 tabular-nums text-muted">{p.phoneNormalized}</td>
                   <td className="px-4 py-3">
@@ -180,6 +196,16 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
                       >
                         Modifier
                       </button>
+                      {p.photoId && (
+                        <button
+                          onClick={() =>
+                            handleRemovePhoto(p.photoId!, [p.firstName, p.lastName].filter(Boolean).join(" "))
+                          }
+                          className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
+                        >
+                          Retirer la photo
+                        </button>
+                      )}
                       <button
                         onClick={() =>
                           handleDelete(p.id, [p.firstName, p.lastName].filter(Boolean).join(" "))

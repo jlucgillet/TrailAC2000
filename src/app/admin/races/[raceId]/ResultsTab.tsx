@@ -72,6 +72,7 @@ export function ResultsTab({ raceId }: { raceId: string }) {
     durationMs: r.durationMs,
     phone: r.phone,
     participantId: r.participantId,
+    photoUrl: r.photoId ? `/api/photos/${r.photoId}` : null,
     startTimestamp: r.startTimestamp ? formatFullDateTime(r.startTimestamp) : null,
     finishTimestamp: r.finishTimestamp ? formatFullDateTime(r.finishTimestamp) : null,
   }));
@@ -110,18 +111,35 @@ export function ResultsTab({ raceId }: { raceId: string }) {
 
       <ResultsTable
         rows={rows}
+        showPhotos
         showTimestamps
         showPhone
         sortKey={sortKey}
         sortDir={sortDir}
         onSortChange={handleSortChange}
         renderActions={(row) => (
-          <button
-            onClick={() => setEditingId(row.participantId ?? null)}
-            className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
-          >
-            Modifier
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setEditingId(row.participantId ?? null)}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:text-ink"
+            >
+              Modifier
+            </button>
+            {row.photoUrl && (
+              <button
+                onClick={async () => {
+                  if (!confirm(`Retirer la photo de ${row.displayName} ?`)) return;
+                  await fetch(row.photoUrl!.replace("/api/photos/", "/api/admin/photos/"), {
+                    method: "DELETE",
+                  });
+                  mutate();
+                }}
+                className="rounded-lg border border-danger px-3 py-1.5 text-xs text-danger"
+              >
+                Retirer la photo
+              </button>
+            )}
+          </div>
         )}
       />
 
