@@ -818,6 +818,7 @@ export function GpxMap({
       }
       setGpsError(null);
       setFollow(true);
+      setOrientation("heading");
       setGpsStatus("starting");
       setGpsActive(true);
     } else {
