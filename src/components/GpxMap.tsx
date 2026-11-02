@@ -1101,7 +1101,7 @@ export function GpxMap({
 
       {gpsControl && orientation === "heading" && (
         <div
-          className="absolute left-2 top-2 z-[1000] rounded bg-bg/70 px-1 text-[10px] text-muted"
+          className="pointer-events-none absolute bottom-0 left-1 z-[1000] max-w-[70%] truncate text-[8px] leading-3 text-muted/80 [&_a]:pointer-events-auto"
           dangerouslySetInnerHTML={{ __html: BASEMAPS[basemap].attribution }}
         />
       )}
