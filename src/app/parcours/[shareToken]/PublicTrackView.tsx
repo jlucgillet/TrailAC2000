@@ -58,7 +58,21 @@ export function PublicTrackView({
         points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))}
         fullscreenControl
         basemapControl
+        gpsControl
       />
+
+      <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
+        <p className="mb-1 font-semibold text-ink">📍 Suivre le parcours avec le GPS</p>
+        <p>
+          Appuie sur <strong className="text-ink">Démarrer</strong> en haut à droite de la carte et
+          autorise la localisation. Ta position apparaît sur le tracé, avec les kilomètres parcourus
+          et restants. Le bouton 🧭 fait passer la carte du nord en haut à ta direction en haut. Si
+          tu déplaces la carte, appuie sur <strong className="text-ink">Recentrer</strong> pour la
+          replacer sur toi. Si tu t&rsquo;éloignes de plus de 30&nbsp;m du tracé, ton téléphone bipe
+          et vibre. Garde l&rsquo;écran allumé et l&rsquo;appli ouverte : le suivi s&rsquo;arrête si
+          tu la quittes.
+        </p>
+      </div>
 
       <a
         href={resolvedDownloadPath}
