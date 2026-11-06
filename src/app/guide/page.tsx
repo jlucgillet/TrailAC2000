@@ -30,6 +30,14 @@ export default function GuideIndexPage() {
           <span className="block font-display text-xl font-semibold">Installer l&rsquo;app sur ton téléphone</span>
           <span className="block text-sm text-muted">Icône sur l&rsquo;écran d&rsquo;accueil, Android et iPhone</span>
         </Link>
+
+        <Link
+          href="/guide/organisateur"
+          className="rounded-2xl border border-border bg-surface px-6 py-5 transition-colors hover:border-muted"
+        >
+          <span className="block font-display text-xl font-semibold">Guide gestionnaire</span>
+          <span className="block text-sm text-muted">Courses, parcours, résultats, photos et statistiques</span>
+        </Link>
       </div>
     </div>
   );
