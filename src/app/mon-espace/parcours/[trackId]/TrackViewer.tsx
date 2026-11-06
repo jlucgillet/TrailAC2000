@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { reportFollowStart } from "@/lib/trackFollow";
 
 export function TrackViewer({
   trackId,
@@ -48,6 +49,7 @@ export function TrackViewer({
           fullscreenControl
           basemapControl
           gpsControl
+          onFollowStart={() => reportFollowStart("athlete", trackId)}
         />
       ) : (
         <p className="text-muted">Aucun tracé disponible pour ce parcours.</p>

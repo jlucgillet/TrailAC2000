@@ -2,6 +2,7 @@
 
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { reportFollowStart } from "@/lib/trackFollow";
 import { ResultsTable, type ResultRow } from "@/components/ResultsTable";
 
 export function PublicTrackView({
@@ -13,6 +14,7 @@ export function PublicTrackView({
   downloadPath,
   label = "Parcours partagé — lecture seule",
   results,
+  followKind = "shared",
 }: {
   name: string;
   distanceKm: number;
@@ -30,6 +32,8 @@ export function PublicTrackView({
    *  pertinent pour le GPX d'une course, jamais pour un parcours de
    *  bibliothèque (qui n'a pas de résultats). */
   results?: ResultRow[];
+  /** "shared" = parcours de bibliothèque, "race" = GPX d'une course. */
+  followKind?: "shared" | "race";
 }) {
   const points = parseGpxPoints(gpxData);
   const resolvedDownloadPath = downloadPath ?? `/api/public/tracks/${shareToken}/download`;
@@ -59,6 +63,7 @@ export function PublicTrackView({
         fullscreenControl
         basemapControl
         gpsControl
+        onFollowStart={() => reportFollowStart(followKind, shareToken)}
       />
 
       <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">

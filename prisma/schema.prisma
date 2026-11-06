@@ -204,3 +204,17 @@ model Track {
 
   @@map("tracks")
 }
+
+model TrackFollow {
+  id        String   @id @default(uuid())
+  trackId   String?
+  raceId    String?
+  source    String   // "athlete" | "shared" | "race"
+  visitorId String?
+  createdAt DateTime @default(now())
+
+  @@index([trackId])
+  @@index([raceId])
+  @@index([createdAt])
+  @@map("track_follows")
+}

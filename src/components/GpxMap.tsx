@@ -254,12 +254,15 @@ export function GpxMap({
   fullscreenControl = false,
   basemapControl = false,
   gpsControl = false,
+  onFollowStart,
 }: {
   points: MapPoint[];
   large?: boolean;
   fullscreenControl?: boolean;
   basemapControl?: boolean;
   gpsControl?: boolean;
+  /** Appelé à chaque démarrage du suivi GPS (statistiques). */
+  onFollowStart?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -817,6 +820,11 @@ export function GpxMap({
         /* pas critique */
       }
       setGpsError(null);
+      try {
+        onFollowStart?.();
+      } catch {
+        /* non bloquant */
+      }
       setFollow(true);
       setOrientation("heading");
       setGpsStatus("starting");
