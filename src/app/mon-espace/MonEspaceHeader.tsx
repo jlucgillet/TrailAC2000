@@ -9,7 +9,7 @@ const NAV_LINKS = [
   { href: "/mon-espace", label: "Courses", icon: "🏁" },
   { href: "/mon-espace/parcours", label: "Parcours", icon: "🗺️" },
   { href: "/mon-espace/profil", label: "Profil", icon: "👤" },
-  { href: "/guide", label: "Guide", icon: "📖" },
+  { href: "/guide?espace=concurrent", label: "Guide", icon: "📖" },
 ];
 
 export function MonEspaceHeader() {
@@ -33,11 +33,17 @@ export function MonEspaceHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className={pathname === link.href ? "font-semibold text-ink" : "hover:text-ink"}
+              className={pathname === link.href.split("?")[0] ? "font-semibold text-ink" : "hover:text-ink"}
             >
               {link.label}
             </Link>
           ))}
+          <Link
+            href="/admin/dashboard"
+            className="rounded-lg border border-border px-3 py-1.5 text-ink hover:border-accent"
+          >
+            Espace organisateur
+          </Link>
           <AthleteLogoutButton />
         </nav>
 
@@ -46,7 +52,7 @@ export function MonEspaceHeader() {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           aria-expanded={open}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border sm:hidden"
+          className="flex h-10 shrink-0 items-center gap-2 rounded-lg border-2 border-accent bg-accent/10 px-3 text-sm font-semibold text-ink sm:hidden"
         >
           <span className="relative block h-3.5 w-4">
             <span
@@ -65,6 +71,7 @@ export function MonEspaceHeader() {
               }`}
             />
           </span>
+          {open ? "Fermer" : "Menu"}
         </button>
       </div>
 
@@ -73,7 +80,7 @@ export function MonEspaceHeader() {
         <div className="border-t border-border px-4 py-4 sm:hidden">
           <nav className="flex flex-col gap-2">
             {NAV_LINKS.map((link) => {
-              const active = pathname === link.href;
+              const active = pathname === link.href.split("?")[0];
               return (
                 <Link
                   key={link.href}
@@ -92,6 +99,14 @@ export function MonEspaceHeader() {
             })}
           </nav>
           <div className="mt-4 border-t border-border pt-4">
+            <Link
+              href="/admin/dashboard"
+              onClick={() => setOpen(false)}
+              className="mb-4 flex items-center gap-3 rounded-xl border border-dashed border-muted px-4 py-3 text-base font-medium text-ink hover:border-accent"
+            >
+              <span className="text-xl">🔁</span>
+              Passer à l&rsquo;espace organisateur
+            </Link>
             <AthleteLogoutButton />
           </div>
         </div>

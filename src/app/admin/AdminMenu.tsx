@@ -78,6 +78,20 @@ export function AdminMenu() {
       >
         Utilisateurs
       </Link>
+
+      <Link
+        href="/guide?espace=organisateur"
+        className="rounded-lg border border-border px-3 py-1.5 text-sm text-ink hover:border-accent"
+      >
+        Guide
+      </Link>
+
+      <Link
+        href="/mon-espace"
+        className="rounded-lg border border-dashed border-muted px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-ink"
+      >
+        Espace concurrent
+      </Link>
     </div>
   );
 }

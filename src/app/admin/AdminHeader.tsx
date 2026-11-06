@@ -20,10 +20,22 @@ const MOBILE_NAV = [
     matches: (p: string) => p.startsWith("/admin/tracks"),
   },
   {
+    href: "/admin/stats",
+    label: "Statistiques",
+    icon: "📊",
+    matches: (p: string) => p.startsWith("/admin/stats"),
+  },
+  {
     href: "/admin/users",
     label: "Utilisateurs",
     icon: "👥",
     matches: (p: string) => p.startsWith("/admin/users"),
+  },
+  {
+    href: "/guide?espace=organisateur",
+    label: "Guide",
+    icon: "📖",
+    matches: (p: string) => p.startsWith("/guide"),
   },
 ];
 
@@ -56,7 +68,7 @@ export function AdminHeader({ email }: { email: string }) {
           onClick={() => setOpen((v) => !v)}
           aria-label={open ? "Fermer le menu" : "Ouvrir le menu"}
           aria-expanded={open}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border sm:hidden"
+          className="flex h-10 shrink-0 items-center gap-2 rounded-lg border-2 border-accent bg-accent/10 px-3 text-sm font-semibold text-ink sm:hidden"
         >
           <span className="relative block h-3.5 w-4">
             <span
@@ -75,6 +87,7 @@ export function AdminHeader({ email }: { email: string }) {
               }`}
             />
           </span>
+          {open ? "Fermer" : "Menu"}
         </button>
       </div>
 
@@ -102,6 +115,14 @@ export function AdminHeader({ email }: { email: string }) {
               );
             })}
           </nav>
+          <Link
+            href="/mon-espace"
+            onClick={() => setOpen(false)}
+            className="mt-4 flex items-center gap-3 rounded-xl border border-dashed border-muted px-4 py-3 text-base font-medium text-ink hover:border-accent"
+          >
+            <span className="text-xl">🔁</span>
+            Passer à l&rsquo;espace concurrent
+          </Link>
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted">
             <span className="truncate">{email}</span>
             <LogoutButton />

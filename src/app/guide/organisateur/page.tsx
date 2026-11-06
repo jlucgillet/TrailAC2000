@@ -23,14 +23,14 @@ export default function OrganisateurGuidePage() {
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/guide" className="text-sm text-muted underline">
-          ← Tous les guides
+        <Link href="/guide?espace=organisateur" className="text-sm text-muted underline">
+          ← Guide gestionnaire
         </Link>
         <Link
-          href="/"
+          href="/admin/dashboard"
           className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-ink"
         >
-          <span aria-hidden>🏠</span> Retour à l&rsquo;accueil
+          <span aria-hidden>⚙️</span> Retour à l&rsquo;administration
         </Link>
       </div>
 
