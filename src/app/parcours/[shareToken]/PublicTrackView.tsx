@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
 import { reportFollowStart } from "@/lib/trackFollow";
@@ -36,7 +37,12 @@ export function PublicTrackView({
   /** "shared" = parcours de bibliothèque, "race" = GPX d'une course. */
   followKind?: "shared" | "race";
 }) {
-  const points = parseGpxPoints(gpxData);
+  const points = useMemo(() => parseGpxPoints(gpxData), [gpxData]);
+  const mapPoints = useMemo(
+    () => points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele })),
+    [points]
+  );
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
   const resolvedDownloadPath = downloadPath ?? `/api/public/tracks/${shareToken}/download`;
 
   return (
@@ -60,16 +66,17 @@ export function PublicTrackView({
       </div>
 
       <GpxMap
-        points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))}
+        points={mapPoints}
         fullscreenControl
         basemapControl
         gpsControl
         onFollowStart={() => reportFollowStart(followKind, shareToken)}
+        cursor={cursor}
       />
 
       {points.length > 1 && (
         <div className="mt-4">
-          <ElevationProfile points={points} />
+          <ElevationProfile points={points} onHoverPoint={setCursor} />
         </div>
       )}
 

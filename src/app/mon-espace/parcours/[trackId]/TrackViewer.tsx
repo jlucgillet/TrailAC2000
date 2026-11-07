@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
@@ -19,7 +20,12 @@ export function TrackViewer({
   elevationGainM: number | null;
   gpxData: string | null;
 }) {
-  const points = gpxData ? parseGpxPoints(gpxData) : [];
+  const points = useMemo(() => (gpxData ? parseGpxPoints(gpxData) : []), [gpxData]);
+  const mapPoints = useMemo(
+    () => points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele })),
+    [points]
+  );
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
 
   return (
     <div>
@@ -46,11 +52,12 @@ export function TrackViewer({
 
       {gpxData && points.length > 1 ? (
         <GpxMap
-          points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))}
+          points={mapPoints}
           fullscreenControl
           basemapControl
           gpsControl
           onFollowStart={() => reportFollowStart("athlete", trackId)}
+          cursor={cursor}
         />
       ) : (
         <p className="text-muted">Aucun tracé disponible pour ce parcours.</p>
@@ -67,7 +74,7 @@ export function TrackViewer({
 
       {gpxData && points.length > 1 && (
         <div className="mt-4">
-          <ElevationProfile points={points} />
+          <ElevationProfile points={points} onHoverPoint={setCursor} />
         </div>
       )}
 

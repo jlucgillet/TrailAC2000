@@ -22,7 +22,7 @@ function niceStep(range: number, targetTicks: number): number {
   return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * pow;
 }
 
-type Sample = { km: number; ele: number; grade: number };
+type Sample = { km: number; ele: number; grade: number; lat: number; lon: number };
 
 function buildSamples(points: Pt[]): Sample[] {
   const valid = points.filter((p) => p.ele !== null && p.ele !== undefined);
@@ -51,7 +51,13 @@ function buildSamples(points: Pt[]): Sample[] {
     while (j < dist.length - 2 && dist[j + 1] < d) j++;
     const span = dist[j + 1] - dist[j] || 1;
     const t = Math.min(1, Math.max(0, (d - dist[j]) / span));
-    out.push({ km: d / 1000, ele: smooth[j] + (smooth[j + 1] - smooth[j]) * t, grade: 0 });
+    out.push({
+      km: d / 1000,
+      ele: smooth[j] + (smooth[j + 1] - smooth[j]) * t,
+      grade: 0,
+      lat: valid[j].lat + (valid[j + 1].lat - valid[j].lat) * t,
+      lon: valid[j].lon + (valid[j + 1].lon - valid[j].lon) * t,
+    });
   }
   // Pente locale (sur ~ 5 échantillons)
   for (let k = 0; k < out.length; k++) {
@@ -70,7 +76,14 @@ const M = { top: 12, right: 14, bottom: 26, left: 44 };
  * Profil altimétrique : kilomètres en horizontal, altitude (m) en vertical.
  * Survol / toucher : affiche km, altitude et pente à l'endroit pointé.
  */
-export function ElevationProfile({ points }: { points: Pt[] }) {
+export function ElevationProfile({
+  points,
+  onHoverPoint,
+}: {
+  points: Pt[];
+  /** Position géographique du point pointé (null quand on quitte le profil). */
+  onHoverPoint?: (p: { lat: number; lon: number } | null) => void;
+}) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [hover, setHover] = useState<number | null>(null);
@@ -115,10 +128,19 @@ export function ElevationProfile({ points }: { points: Pt[] }) {
   function onMove(e: React.PointerEvent<SVGSVGElement>) {
     const rect = e.currentTarget.getBoundingClientRect();
     const km = ((e.clientX - rect.left - M.left) / innerW) * maxKm;
-    if (km < 0 || km > maxKm) return setHover(null);
+    if (km < 0 || km > maxKm) return leave(e);
     let idx = Math.round((km / maxKm) * (samples.length - 1));
     idx = Math.max(0, Math.min(samples.length - 1, idx));
     setHover(idx);
+    onHoverPoint?.({ lat: samples[idx].lat, lon: samples[idx].lon });
+  }
+
+  // Souris : le repère disparaît en quittant le graphe. Doigt : il reste à
+  // la dernière position touchée.
+  function leave(e: React.PointerEvent<SVGSVGElement>) {
+    if (e.pointerType === "touch") return;
+    setHover(null);
+    onHoverPoint?.(null);
   }
 
   const h = hover !== null ? samples[hover] : null;
@@ -134,7 +156,7 @@ export function ElevationProfile({ points }: { points: Pt[] }) {
             height={HEIGHT}
             onPointerMove={onMove}
             onPointerDown={onMove}
-            onPointerLeave={() => setHover(null)}
+            onPointerLeave={leave}
             style={{ touchAction: "pan-y", display: "block" }}
             role="img"
             aria-label="Profil d'altitude du parcours"

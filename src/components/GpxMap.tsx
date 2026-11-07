@@ -255,6 +255,7 @@ export function GpxMap({
   basemapControl = false,
   gpsControl = false,
   onFollowStart,
+  cursor = null,
 }: {
   points: MapPoint[];
   large?: boolean;
@@ -263,6 +264,8 @@ export function GpxMap({
   gpsControl?: boolean;
   /** Appelé à chaque démarrage du suivi GPS (statistiques). */
   onFollowStart?: () => void;
+  /** Position à repérer sur la carte (ex. survol du profil d'altitude). */
+  cursor?: { lat: number; lon: number } | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -305,6 +308,49 @@ export function GpxMap({
   const [compassRot, setCompassRot] = useState(0);
 
   const trackIndex = useMemo(() => buildTrackIndex(points), [points]);
+
+  // Repère synchronisé avec le profil d'altitude.
+  const cursorMarkerRef = useRef<import("leaflet").Marker | null>(null);
+  useEffect(() => {
+    const L = leafletRef.current;
+    const map = mapRef.current;
+    if (!L || !map) return;
+    let marker = cursorMarkerRef.current;
+    if (marker && !map.hasLayer(marker)) {
+      marker = null;
+      cursorMarkerRef.current = null;
+    }
+    if (!cursor) {
+      if (marker) {
+        map.removeLayer(marker);
+        cursorMarkerRef.current = null;
+      }
+      return;
+    }
+    const latlng: [number, number] = [cursor.lat, cursor.lon];
+    if (!marker) {
+      marker = L.marker(latlng, {
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 2000,
+        icon: L.divIcon({
+          className: "",
+          iconSize: [20, 20],
+          iconAnchor: [10, 10],
+          html: '<div style="width:20px;height:20px;border-radius:9999px;background:#DC2626;border:3px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.6);"></div>',
+        }),
+      }).addTo(map);
+      cursorMarkerRef.current = marker;
+    } else {
+      marker.setLatLng(latlng);
+    }
+    // Garde le repère visible si la carte est zoomée ailleurs.
+    try {
+      map.panInside(latlng, { padding: [50, 50], animate: false });
+    } catch {
+      /* non bloquant */
+    }
+  }, [cursor]);
 
   const pointsKey = `${points.length}:${points
     .reduce((sum, p) => sum + p.lat + p.lon, 0)

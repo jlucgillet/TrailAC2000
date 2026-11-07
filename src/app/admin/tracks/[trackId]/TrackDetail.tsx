@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
@@ -28,6 +28,7 @@ export function TrackDetail({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [reversing, setReversing] = useState(false);
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
 
   async function handleRename(e: React.FormEvent) {
     e.preventDefault();
@@ -87,7 +88,12 @@ export function TrackDetail({
     router.push("/admin/tracks");
   }
 
-  const points = data?.gpxData ? parseGpxPoints(data.gpxData) : [];
+  const gpxText: string | undefined = data?.gpxData;
+  const points = useMemo(() => (gpxText ? parseGpxPoints(gpxText) : []), [gpxText]);
+  const mapPoints = useMemo(
+    () => points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele })),
+    [points]
+  );
   // Reflète la dernière version importée (data) une fois chargée ; les
   // valeurs initiales (props) ne servent qu'au tout premier rendu.
   const currentDistanceKm = data?.distanceKm ?? distanceKm;
@@ -137,10 +143,10 @@ export function TrackDetail({
       {isLoading ? (
         <p className="text-muted">Chargement de la carte…</p>
       ) : (
-        <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} large fullscreenControl basemapControl />
+        <GpxMap points={mapPoints} large fullscreenControl basemapControl cursor={cursor} />
       )}
 
-      {!isLoading && points.length > 1 && <ElevationProfile points={points} />}
+      {!isLoading && points.length > 1 && <ElevationProfile points={points} onHoverPoint={setCursor} />}
 
       {!isLoading && (
         <AthleteVisibilitySection trackId={trackId} data={data} onUpdated={() => mutate()} />
