@@ -825,6 +825,8 @@ export function GpxMap({
       } catch {
         /* non bloquant */
       }
+      // Le suivi s'utilise sur le terrain : on passe la carte en plein écran.
+      if (fullscreenControl) setFullscreen(true);
       setFollow(true);
       setOrientation("heading");
       setGpsStatus("starting");
