@@ -3,6 +3,7 @@
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
 import { reportFollowStart } from "@/lib/trackFollow";
+import { ElevationProfile } from "@/components/ElevationProfile";
 import { ResultsTable, type ResultRow } from "@/components/ResultsTable";
 
 export function PublicTrackView({
@@ -65,6 +66,12 @@ export function PublicTrackView({
         gpsControl
         onFollowStart={() => reportFollowStart(followKind, shareToken)}
       />
+
+      {points.length > 1 && (
+        <div className="mt-4">
+          <ElevationProfile points={points} />
+        </div>
+      )}
 
       <div className="mt-6 rounded-xl border border-border bg-surface p-4 text-sm text-muted">
         <p className="mb-1 font-semibold text-ink">📍 Suivre le parcours avec le GPS</p>
