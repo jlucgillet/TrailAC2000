@@ -35,7 +35,7 @@ export function TracksList() {
   }
 
   const tracks: any[] = useMemo(() => data?.tracks ?? [], [data]);
-  const { filtered, panel } = useTrackFilters(tracks);
+  const { filtered, panel } = useTrackFilters(tracks, { discreet: true });
 
   const colors = useMemo(() => {
     const m: Record<string, string> = {};
