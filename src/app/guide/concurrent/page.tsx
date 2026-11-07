@@ -278,7 +278,7 @@ export default function ConcurrentGuidePage() {
             number={3}
             caption={
               <>
-                Sur place, appuie sur <b className="text-ink">« Démarrer »</b> en haut à droite de la
+                Sur place, appuie sur <b className="text-ink">« Démarrer suivi »</b> en haut à droite de la
                 carte et <b className="text-ink">autorise la localisation</b>. Ta position (flèche
                 bleue) apparaît sur le tracé, qui passe en rouge uni, avec tes kilomètres parcourus
                 et restants.
@@ -286,7 +286,7 @@ export default function ConcurrentGuidePage() {
             }
           >
             <div className="mb-3 self-end rounded-full bg-white px-3 py-1 text-[10px] font-bold text-[#15803D] shadow">
-              Démarrer
+              Démarrer suivi
             </div>
             <div className="rounded-lg border border-border bg-surface p-2">
               <div className="flex justify-between text-[9px] text-muted">

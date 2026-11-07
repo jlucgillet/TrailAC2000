@@ -1056,7 +1056,7 @@ export function GpxMap({
               boxShadow: "0 1px 5px rgba(0,0,0,0.4)",
             }}
           >
-            {gpsActive ? "Arrêter" : "Démarrer"}
+            {gpsActive ? "Arrêter" : "Démarrer suivi"}
           </button>
         )}
 
@@ -1174,7 +1174,7 @@ export function GpxMap({
             Recentrer
           </button>
         )}
-        <div className="w-full rounded-xl border border-border bg-bg/95 p-3 text-sm shadow-lg backdrop-blur-sm">
+        <div className="w-full rounded-lg border border-border bg-bg/95 px-2.5 py-1.5 text-xs shadow-lg backdrop-blur-sm">
           {gpsStatus === "error" && <p className="text-ink">{gpsError}</p>}
           {gpsStatus === "starting" && <p className="text-muted">Recherche de ta position…</p>}
           {gpsStatus === "on" && gpsInfo && (
@@ -1190,22 +1190,22 @@ export function GpxMap({
                   progression.
                 </p>
               ) : (
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs text-muted">Parcouru</p>
-                  <p className="font-display text-xl font-semibold tabular-nums">
-                    {formatKm(gpsInfo.along)}
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-muted">
+                    Parcouru{" "}
+                    <span className="font-display text-base font-semibold tabular-nums text-ink">
+                      {formatKm(gpsInfo.along)}
+                    </span>
+                  </p>
+                  <p className="text-muted">
+                    Restant{" "}
+                    <span className="font-display text-base font-semibold tabular-nums text-ink">
+                      {formatKm(gpsInfo.remaining)}
+                    </span>
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted">Restant</p>
-                  <p className="font-display text-xl font-semibold tabular-nums">
-                    {formatKm(gpsInfo.remaining)}
-                  </p>
-                </div>
-              </div>
               )}
-              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface">
+              <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface">
                 <div
                   className="h-full bg-accent"
                   style={{
@@ -1217,26 +1217,26 @@ export function GpxMap({
                   }}
                 />
               </div>
-              {gpsInfo.direction === "ok" && (
-                <p className="mt-2 text-xs text-ink">✅ Tu suis le tracé dans le bon sens.</p>
-              )}
-              {gpsInfo.direction === "reverse" && (
-                <p className="mt-2 text-xs text-ink">↩️ Tu vas à contre-sens du tracé. Demi-tour ?</p>
-              )}
               {gpsInfo.offTrack > OFF_TRACK_ALERT_M && (
-                <p className="mt-2 rounded-lg bg-danger px-2 py-1.5 text-xs font-semibold text-white">
+                <p className="mt-1 rounded bg-danger px-2 py-1 text-[11px] font-semibold text-white">
                   ⚠️ Tu es à {Math.round(gpsInfo.offTrack)} m du tracé !
                 </p>
               )}
-              <div className="mt-1 flex items-center justify-between gap-2">
-                <p className="text-xs text-muted">Précision GPS : ±{Math.round(gpsInfo.accuracy)} m</p>
+              <div className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted">
+                <span className="truncate">
+                  {gpsInfo.direction === "ok" && "✅ Bon sens · "}
+                  {gpsInfo.direction === "reverse" && "↩️ Contre-sens, demi-tour ? · "}±
+                  {Math.round(gpsInfo.accuracy)} m
+                </span>
                 <button
                   type="button"
                   onClick={() => setAlertsOn((v) => !v)}
                   aria-pressed={alertsOn}
-                  className="shrink-0 rounded-md border border-border px-2 py-0.5 text-xs text-muted hover:text-ink"
+                  aria-label={alertsOn ? "Alerte activée (toucher pour couper)" : "Alerte coupée (toucher pour activer)"}
+                  title={alertsOn ? "Alerte activée" : "Alerte coupée"}
+                  className="shrink-0 rounded border border-border px-1.5 py-0.5 text-xs hover:text-ink"
                 >
-                  {alertsOn ? "🔔 Alerte activée" : "🔕 Alerte coupée"}
+                  {alertsOn ? "🔔" : "🔕"}
                 </button>
               </div>
             </>
