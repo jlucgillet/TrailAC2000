@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { TrackThumbnail } from "@/components/TrackThumbnail";
+import { TracksMap, TRACK_COLORS } from "@/components/TracksMap";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -107,6 +108,27 @@ export function ParcoursList() {
     return okD && okE;
   });
 
+  // Couleur stable par parcours (selon sa place dans la liste complète).
+  const colors = useMemo(() => {
+    const m: Record<string, string> = {};
+    tracks.forEach((t, i) => (m[t.id] = TRACK_COLORS[i % TRACK_COLORS.length]));
+    return m;
+  }, [tracks]);
+
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  // Un parcours filtré ne reste pas sélectionné.
+  useEffect(() => {
+    if (selectedId && !filtered.some((t) => t.id === selectedId)) setSelectedId(null);
+  }, [filtered, selectedId]);
+
+  // Sélection depuis la carte → fait défiler la liste jusqu'au parcours.
+  useEffect(() => {
+    if (!selectedId) return;
+    document.getElementById(`parcours-${selectedId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
+
   const showFilters = tracks.length > 1 && (bounds.dMax > bounds.dMin || bounds.eMax > bounds.eMin);
 
   return (
@@ -168,6 +190,21 @@ export function ParcoursList() {
         </div>
       )}
 
+      {tracks.length > 0 && (
+        <div className="mb-6">
+          <TracksMap
+            tracks={filtered}
+            colors={colors}
+            selectedId={selectedId}
+            hoveredId={hoveredId}
+            onSelect={setSelectedId}
+          />
+          <p className="mt-2 text-xs text-muted">
+            Touche un tracé sur la carte pour le sélectionner ; la carte suit les filtres.
+          </p>
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-muted">Chargement…</p>
       ) : tracks.length === 0 ? (
@@ -179,9 +216,20 @@ export function ParcoursList() {
           {filtered.map((t) => (
             <Link
               key={t.id}
+              id={`parcours-${t.id}`}
               href={`/mon-espace/parcours/${t.id}`}
+              onMouseEnter={() => setHoveredId(t.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onFocus={() => setHoveredId(t.id)}
+              onBlur={() => setHoveredId(null)}
               className="flex items-center gap-4 rounded-xl border-2 border-accent/30 bg-surface p-4 transition-colors hover:border-accent"
+              style={selectedId === t.id ? { borderColor: colors[t.id], borderWidth: 3 } : undefined}
             >
+              <span
+                className="h-10 w-1.5 shrink-0 rounded-full"
+                style={{ background: colors[t.id] }}
+                aria-hidden
+              />
               <TrackThumbnail gpxData={t.gpxData} width={64} height={64} />
               <div className="min-w-0">
                 <p className="truncate font-medium">{t.name}</p>
