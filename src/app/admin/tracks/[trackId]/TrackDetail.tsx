@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
@@ -171,6 +172,12 @@ export function TrackDetail({
         >
           Télécharger le fichier GPX
         </a>
+        <Link
+          href={`/admin/tracks/${trackId}/edit`}
+          className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+        >
+          ✏️ Modifier le tracé
+        </Link>
         <button
           type="button"
           onClick={handleReverse}

@@ -148,6 +148,13 @@ export default function OrganisateurGuidePage() {
             numérique de terrain : le dénivelé est une estimation.
           </li>
           <li>
+            <b>✏️ Modifier le tracé</b> (dans la fiche d&rsquo;un parcours) : rouvre le tracé dans le même
+            outil pour déplacer des points, en supprimer ou prolonger le parcours. Les tronçons autour
+            d&rsquo;un point déplacé sont recalculés avec le mode choisi (Chemin, Route ou Manuel), le reste
+            du tracé est conservé. Rien ne change tant que tu n&rsquo;as pas cliqué sur{" "}
+            <b>Enregistrer les modifications</b>.
+          </li>
+          <li>
             Dans la fiche d&rsquo;un parcours : <b>Remplacer le fichier GPX</b>, <b>⇄ Inverser le
             sens</b> (départ et arrivée échangés, D+ recalculé) ou supprimer.
           </li>

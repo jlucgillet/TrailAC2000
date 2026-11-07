@@ -4,11 +4,22 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import "leaflet/dist/leaflet.css";
 import { ElevationProfile } from "@/components/ElevationProfile";
-import { computeGpxStats } from "@/lib/gpx";
+import Link from "next/link";
+import { computeGpxStats, parseGpxPoints } from "@/lib/gpx";
 
 type LL = [number, number];
 type Mode = "foot" | "road" | "manual";
-type Seg = { id: number; mode: Mode; coords: LL[]; status: "loading" | "ok" | "fallback" };
+type Seg = {
+  id: number;
+  mode: Mode;
+  coords: LL[];
+  status: "loading" | "ok" | "fallback";
+  /** Tronçon issu du tracé d'origine (mode édition) : sa géométrie exacte est conservée. */
+  orig?: boolean;
+};
+
+/** Parcours existant à modifier. */
+export type InitialTrack = { trackId: string; name: string; gpxData: string };
 
 const BASEMAPS = {
   topo: {
@@ -145,6 +156,106 @@ function descent(points: { ele: number | null }[]): number {
   return Math.round(loss);
 }
 
+/** Distance (m) d'un point à un segment [a,b] (projection locale). */
+function distToSeg(p: LL, a: LL, b: LL): number {
+  const k = Math.cos((p[0] * Math.PI) / 180);
+  const px = (p[1] - a[1]) * k * 111320;
+  const py = (p[0] - a[0]) * 110540;
+  const bx = (b[1] - a[1]) * k * 111320;
+  const by = (b[0] - a[0]) * 110540;
+  const len2 = bx * bx + by * by;
+  const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, (px * bx + py * by) / len2));
+  return Math.hypot(px - t * bx, py - t * by);
+}
+
+/** Douglas-Peucker itératif : indices à conserver pour une tolérance donnée (m). */
+function dpIndices(pts: LL[], tol: number): number[] {
+  const keep = new Uint8Array(pts.length);
+  keep[0] = 1;
+  keep[pts.length - 1] = 1;
+  const stack: [number, number][] = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [lo, hi] = stack.pop()!;
+    let maxD = 0;
+    let idx = -1;
+    for (let i = lo + 1; i < hi; i++) {
+      const d = distToSeg(pts[i], pts[lo], pts[hi]);
+      if (d > maxD) {
+        maxD = d;
+        idx = i;
+      }
+    }
+    if (idx >= 0 && maxD > tol) {
+      keep[idx] = 1;
+      stack.push([lo, idx], [idx, hi]);
+    }
+  }
+  const out: number[] = [];
+  keep.forEach((v, i) => v && out.push(i));
+  return out;
+}
+
+const MAX_EDIT_WAYPOINTS = 80;
+
+/** Transforme un GPX existant en points modifiables (≤ 80) + tronçons qui gardent la géométrie d'origine. */
+function buildFromTrack(gpxData: string) {
+  const pts = parseGpxPoints(gpxData);
+  const coords: LL[] = pts.map((p) => [p.lat, p.lon] as LL);
+  if (coords.length < 2) return { wps: [] as LL[], segs: [] as Seg[], nextId: 0, orig: pts };
+  let tol = 20;
+  let idx = dpIndices(coords, tol);
+  while (idx.length > MAX_EDIT_WAYPOINTS) {
+    tol *= 1.5;
+    idx = dpIndices(coords, tol);
+  }
+  const wps = idx.map((i) => coords[i]);
+  const segs: Seg[] = [];
+  for (let k = 0; k < idx.length - 1; k++) {
+    segs.push({
+      id: k + 1,
+      mode: "manual",
+      coords: coords.slice(idx[k], idx[k + 1] + 1),
+      status: "ok",
+      orig: true,
+    });
+  }
+  return { wps, segs, nextId: segs.length, orig: pts };
+}
+
+/** Index spatial des points d'origine : altitude d'origine à ≤ 20 m d'un point. */
+function makeOrigLookup(orig: { lat: number; lon: number; ele: number | null }[]) {
+  const CELL = 0.0003;
+  const grid = new Map<string, number[]>();
+  orig.forEach((p, i) => {
+    if (p.ele === null || p.ele === undefined) return;
+    const key = `${Math.round(p.lat / CELL)},${Math.round(p.lon / CELL)}`;
+    const arr = grid.get(key);
+    if (arr) arr.push(i);
+    else grid.set(key, [i]);
+  });
+  return (p: LL): number | null => {
+    if (grid.size === 0) return null;
+    const cx = Math.round(p[0] / CELL);
+    const cy = Math.round(p[1] / CELL);
+    let best = -1;
+    let bestD = 20;
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        const arr = grid.get(`${cx + dx},${cy + dy}`);
+        if (!arr) continue;
+        for (const i of arr) {
+          const d = hav(p, [orig[i].lat, orig[i].lon]);
+          if (d < bestD) {
+            bestD = d;
+            best = i;
+          }
+        }
+      }
+    }
+    return best >= 0 ? (orig[best].ele as number) : null;
+  };
+}
+
 function buildGpx(name: string, pts: { lat: number; lon: number; ele: number | null }[]): string {
   const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const trkpts = pts
@@ -167,8 +278,14 @@ ${trkpts}
 `;
 }
 
-export function TrackDrawer() {
+export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
   const router = useRouter();
+  const initRef = useRef<ReturnType<typeof buildFromTrack> | null>(null);
+  if (initRef.current === null) {
+    initRef.current = initial ? buildFromTrack(initial.gpxData) : { wps: [], segs: [], nextId: 0, orig: [] };
+  }
+  const origEle = useMemo(() => makeOrigLookup(initRef.current!.orig), []);
+  const editing = !!initial;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const leafletRef = useRef<typeof import("leaflet") | null>(null);
@@ -176,8 +293,8 @@ export function TrackDrawer() {
   const layerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const cursorRef = useRef<import("leaflet").CircleMarker | null>(null);
 
-  const idRef = useRef(0);
-  const dataRef = useRef<{ wps: LL[]; segs: Seg[] }>({ wps: [], segs: [] });
+  const idRef = useRef(initRef.current.nextId);
+  const dataRef = useRef<{ wps: LL[]; segs: Seg[] }>({ wps: initRef.current.wps, segs: initRef.current.segs });
   const [data, setData] = useState(dataRef.current);
   const routeCache = useRef(new Map<string, LL[]>());
   const eleCache = useRef(new Map<string, number>());
@@ -191,7 +308,7 @@ export function TrackDrawer() {
   const [eleTick, setEleTick] = useState(0);
   const [eleLoading, setEleLoading] = useState(false);
   const [eleFailed, setEleFailed] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -258,7 +375,7 @@ export function TrackDrawer() {
       if (i === wps.length - 1) return actions.undo();
       if (i === 0) return commit({ wps: wps.slice(1), segs: segs.slice(1) });
       const nextWps = wps.filter((_, k) => k !== i);
-      const merged = makeSeg(wps[i - 1], wps[i + 1], segs[i - 1].mode);
+      const merged = makeSeg(wps[i - 1], wps[i + 1], segs[i - 1].orig ? modeRef.current : segs[i - 1].mode);
       commit({ wps: nextWps, segs: [...segs.slice(0, i - 1), merged, ...segs.slice(i + 1)] });
     },
     movePoint(i: number, ll: LL) {
@@ -266,8 +383,8 @@ export function TrackDrawer() {
       if (i < 0 || i >= wps.length) return;
       const nextWps = wps.map((p, k) => (k === i ? ll : p));
       const nextSegs = segs.slice();
-      if (i > 0) nextSegs[i - 1] = makeSeg(nextWps[i - 1], ll, segs[i - 1].mode);
-      if (i < wps.length - 1) nextSegs[i] = makeSeg(ll, nextWps[i + 1], segs[i].mode);
+      if (i > 0) nextSegs[i - 1] = makeSeg(nextWps[i - 1], ll, segs[i - 1].orig ? modeRef.current : segs[i - 1].mode);
+      if (i < wps.length - 1) nextSegs[i] = makeSeg(ll, nextWps[i + 1], segs[i].orig ? modeRef.current : segs[i].mode);
       commit({ wps: nextWps, segs: nextSegs });
     },
     closeLoop() {
@@ -295,6 +412,8 @@ export function TrackDrawer() {
       const b = BASEMAPS.topo;
       tileRef.current = L.tileLayer(b.url, { attribution: b.attribution, maxZoom: b.maxZoom }).addTo(map);
       map.setView([46.6, 2.5], 6);
+      const startPath = dataRef.current.segs.flatMap((sg) => sg.coords);
+      if (startPath.length > 1) map.fitBounds(L.latLngBounds(startPath), { padding: [30, 30] });
       layerRef.current = L.layerGroup().addTo(map);
       map.on("click", (e: import("leaflet").LeafletMouseEvent) => {
         actionsRef.current.addPoint([e.latlng.lat, e.latlng.lng]);
@@ -443,7 +562,7 @@ export function TrackDrawer() {
       const seen = new Set<string>();
       for (const p of sample) {
         const k = ELE_KEY(p);
-        if (!eleCache.current.has(k) && !seen.has(k)) {
+        if (!eleCache.current.has(k) && !seen.has(k) && origEle(p) === null) {
           seen.add(k);
           missing.push(p);
         }
@@ -471,6 +590,8 @@ export function TrackDrawer() {
 
   const points = useMemo(() => {
     const raw = sample.map((p) => {
+      const o = origEle(p);
+      if (o !== null) return o;
       const v = eleCache.current.get(ELE_KEY(p));
       return v === undefined ? null : v;
     });
@@ -535,10 +656,26 @@ export function TrackDrawer() {
     setSaving(true);
     try {
       const finalName = name.trim();
-      const gpx = buildGpx(finalName || "Parcours tracé", points);
+      const gpx = buildGpx(finalName || initial?.name || "Parcours tracé", points);
       const form = new FormData();
       form.append("file", new File([gpx], "trace.gpx", { type: "application/gpx+xml" }));
       if (finalName) form.append("name", finalName);
+      if (initial) {
+        // Remplace le tracé du parcours existant (+ renomme si le nom a changé).
+        const res = await fetch(`/api/admin/tracks/${initial.trackId}`, { method: "POST", body: form });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error ?? "Erreur lors de l'enregistrement.");
+        if (finalName && finalName !== initial.name) {
+          const r2 = await fetch(`/api/admin/tracks/${initial.trackId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: finalName }),
+          });
+          if (!r2.ok) throw new Error("Tracé enregistré, mais le nom n'a pas pu être modifié.");
+        }
+        router.push(`/admin/tracks/${initial.trackId}`);
+        return;
+      }
       const res = await fetch("/api/admin/tracks", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? "Erreur lors de l'enregistrement.");
@@ -568,6 +705,13 @@ export function TrackDrawer() {
         <p className="text-xs text-muted">
           {MODE_INFO[mode].hint} Le mode s&rsquo;applique aux prochains points : tu peux en changer en cours de
           tracé.
+          {editing && (
+            <>
+              {" "}
+              Quand tu déplaces un point, les deux tronçons voisins sont recalculés avec le mode choisi ici ; le
+              reste du tracé n&rsquo;est pas modifié.
+            </>
+          )}
         </p>
       </div>
 
@@ -705,11 +849,11 @@ export function TrackDrawer() {
       {/* Enregistrement */}
       <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-4">
         <label className="flex flex-col gap-1">
-          <span className="text-sm text-muted">Nom du parcours (facultatif)</span>
+          <span className="text-sm text-muted">{editing ? "Nom du parcours" : "Nom du parcours (facultatif)"}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={`Par défaut : AC2000-${Math.round(stats.distanceKm)}-${stats.up}`}
+            placeholder={editing ? initial!.name : `Par défaut : AC2000-${Math.round(stats.distanceKm)}-${stats.up}`}
             className="rounded-lg border border-border bg-bg px-3 py-2"
           />
         </label>
@@ -721,8 +865,16 @@ export function TrackDrawer() {
             disabled={!canSave}
             className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
           >
-            {saving ? "Enregistrement…" : "Enregistrer le parcours"}
+            {saving ? "Enregistrement…" : editing ? "Enregistrer les modifications" : "Enregistrer le parcours"}
           </button>
+          {editing && (
+            <Link
+              href={`/admin/tracks/${initial!.trackId}`}
+              className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
+            >
+              Annuler
+            </Link>
+          )}
           {!canSave && !saving && data.wps.length >= 2 && (
             <span className="text-xs text-muted">Calcul en cours…</span>
           )}
