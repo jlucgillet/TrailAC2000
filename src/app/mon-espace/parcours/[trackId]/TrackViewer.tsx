@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { ElevationProfile } from "@/components/ElevationProfile";
 import { reportFollowStart } from "@/lib/trackFollow";
 
 export function TrackViewer({
@@ -62,6 +63,12 @@ export function TrackViewer({
         >
           Télécharger le fichier GPX
         </a>
+      )}
+
+      {gpxData && points.length > 1 && (
+        <div className="mt-4">
+          <ElevationProfile points={points} />
+        </div>
       )}
 
       {gpxData && points.length > 1 && (

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
+import { ElevationProfile } from "@/components/ElevationProfile";
 import { parseGpxPoints } from "@/lib/gpx";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -138,6 +139,8 @@ export function TrackDetail({
       ) : (
         <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} large fullscreenControl basemapControl />
       )}
+
+      {!isLoading && points.length > 1 && <ElevationProfile points={points} />}
 
       {!isLoading && (
         <AthleteVisibilitySection trackId={trackId} data={data} onUpdated={() => mutate()} />
