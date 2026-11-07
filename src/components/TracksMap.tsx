@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import "leaflet/dist/leaflet.css";
 import { parseGpxPoints } from "@/lib/gpx";
+import { GpxMap } from "@/components/GpxMap";
+import { ElevationProfile } from "@/components/ElevationProfile";
 
 export type MapTrack = {
   id: string;
@@ -98,6 +100,9 @@ export function TracksMap({
   const [basemap, setBasemap] = useState<BasemapKey>("topo");
   const [pickerOpen, setPickerOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [popupId, setPopupId] = useState<string | null>(null);
+  const popupIdRef = useRef<string | null>(null);
+  popupIdRef.current = popupId;
 
   // Tracés décodés (une seule fois par parcours).
   const parsed = useMemo(() => {
@@ -235,11 +240,20 @@ export function TracksMap({
     if (layers) map.fitBounds(layers.line.getBounds(), { padding: [40, 40], maxZoom: 15 });
   }, [selectedId, ready]);
 
+  // Le popup n'existe qu'en plein écran.
+  useEffect(() => {
+    if (!fullscreen) setPopupId(null);
+  }, [fullscreen]);
+
   // Plein écran : recalcul de la taille + Échap.
   useEffect(() => {
     const t = setTimeout(() => mapRef.current?.invalidateSize(), 60);
     if (!fullscreen) return () => clearTimeout(t);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFullscreen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (popupIdRef.current) setPopupId(null);
+      else setFullscreen(false);
+    };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -348,13 +362,24 @@ export function TracksMap({
               {selected.elevationGainM != null ? ` · D+ ${Math.round(selected.elevationGainM)} m` : ""}
             </p>
           </div>
-          <Link
-            href={`${hrefBase}/${selected.id}`}
-            className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
-            style={{ background: "#16A34A", color: "#FFFFFF" }}
-          >
-            Voir
-          </Link>
+          {fullscreen ? (
+            <button
+              type="button"
+              onClick={() => setPopupId(selected.id)}
+              className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ background: "#16A34A", color: "#FFFFFF" }}
+            >
+              Voir
+            </button>
+          ) : (
+            <Link
+              href={`${hrefBase}/${selected.id}`}
+              className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
+              style={{ background: "#16A34A", color: "#FFFFFF" }}
+            >
+              Voir
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => onSelect(null)}
@@ -366,6 +391,98 @@ export function TracksMap({
           </button>
         </div>
       )}
+
+      {fullscreen && popupId && (() => {
+        const t = tracks.find((x) => x.id === popupId);
+        return t ? (
+          <TrackPopup track={t} href={`${hrefBase}/${t.id}`} onClose={() => setPopupId(null)} />
+        ) : null;
+      })()}
+    </div>
+  );
+}
+
+/** Fiche d'un parcours en popup par-dessus la carte plein écran. */
+function TrackPopup({
+  track,
+  href,
+  onClose,
+}: {
+  track: MapTrack;
+  href: string;
+  onClose: () => void;
+}) {
+  const points = useMemo(() => (track.gpxData ? parseGpxPoints(track.gpxData) : []), [track.gpxData]);
+  const mapPoints = useMemo(
+    () => points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele })),
+    [points]
+  );
+  const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
+
+  return (
+    <div
+      className="absolute inset-0 z-[1200] flex flex-col bg-bg"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Fiche du parcours ${track.name}`}
+    >
+      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-lg border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink hover:border-ink"
+        >
+          ← Retour à la carte
+        </button>
+        <h2 className="min-w-0 flex-1 truncate font-display text-lg font-semibold">{track.name}</h2>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fermer"
+          className="shrink-0 text-2xl leading-none text-muted hover:text-ink"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-4">
+        <div className="mx-auto flex max-w-2xl flex-col gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:max-w-sm">
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-sm text-muted">Distance</p>
+              <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                {track.distanceKm != null ? `${track.distanceKm.toFixed(1)} km` : "—"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface p-4">
+              <p className="text-sm text-muted">Dénivelé positif</p>
+              <p className="mt-1 font-display text-2xl font-semibold tabular-nums">
+                {track.elevationGainM != null ? `${Math.round(track.elevationGainM)} m` : "—"}
+              </p>
+            </div>
+          </div>
+
+          {mapPoints.length > 1 ? (
+            <>
+              <GpxMap points={mapPoints} basemapControl cursor={cursor} />
+              <ElevationProfile points={points} onHoverPoint={setCursor} />
+            </>
+          ) : (
+            <p className="text-muted">Aucun tracé disponible pour ce parcours.</p>
+          )}
+
+          <Link
+            href={href}
+            className="w-fit rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
+          >
+            Ouvrir la fiche complète
+          </Link>
+          <p className="text-xs text-muted">
+            La fiche complète permet aussi de suivre le parcours avec le GPS et de télécharger le
+            fichier GPX.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
