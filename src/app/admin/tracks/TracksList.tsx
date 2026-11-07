@@ -63,16 +63,24 @@ export function TracksList() {
             Une bibliothèque de tracés réutilisables sur plusieurs courses.
           </p>
         </div>
-        <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg">
-          {uploading ? "Import en cours…" : "+ Nouveau parcours (GPX)"}
-          <input
-            type="file"
-            accept=".gpx"
-            onChange={handleUpload}
-            className="hidden"
-            disabled={uploading}
-          />
-        </label>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/tracks/new"
+            className="rounded-lg border border-accent px-4 py-2 text-sm font-semibold text-ink hover:bg-accent/10"
+          >
+            ✏️ Créer en traçant
+          </Link>
+          <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg">
+            {uploading ? "Import en cours…" : "+ Nouveau parcours (GPX)"}
+            <input
+              type="file"
+              accept=".gpx"
+              onChange={handleUpload}
+              className="hidden"
+              disabled={uploading}
+            />
+          </label>
+        </div>
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}

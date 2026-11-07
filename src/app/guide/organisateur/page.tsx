@@ -139,6 +139,15 @@ export default function OrganisateurGuidePage() {
             (<code>AC2000-distance-D+</code>) et modifiable.
           </li>
           <li>
+            <b>✏️ Créer en traçant</b> : dessine un parcours directement sur la carte. Touche la carte
+            pour ajouter des points ; en mode <b>Chemin</b> ou <b>Route</b> le tracé suit
+            automatiquement les chemins ou les routes, en mode <b>Manuel</b> il relie les points en
+            ligne droite (tu peux changer de mode en cours de tracé). Distance, D+ et D− se mettent à
+            jour en direct. Fais glisser un point pour le déplacer, touche-le pour le supprimer, ou
+            utilise <b>Supprimer le dernier point</b> (Ctrl+Z). L&rsquo;altitude vient d&rsquo;un modèle
+            numérique de terrain : le dénivelé est une estimation.
+          </li>
+          <li>
             Dans la fiche d&rsquo;un parcours : <b>Remplacer le fichier GPX</b>, <b>⇄ Inverser le
             sens</b> (départ et arrivée échangés, D+ recalculé) ou supprimer.
           </li>
