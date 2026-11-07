@@ -13,7 +13,7 @@ export function ParcoursList() {
   const { data, isLoading } = useSWR("/api/athlete/tracks", fetcher);
   const tracks: any[] = useMemo(() => data?.tracks ?? [], [data]);
 
-  const { filtered, panel } = useTrackFilters(tracks);
+  const { filtered, panel } = useTrackFilters(tracks, { discreet: true });
 
   // Couleur stable par parcours (selon sa place dans la liste complète).
   const colors = useMemo(() => {

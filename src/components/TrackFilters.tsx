@@ -72,7 +72,12 @@ function RangeFilter({
  * Filtres distance / dénivelé pour une liste de parcours.
  * Retourne la liste filtrée et le panneau de filtres à afficher.
  */
-export function useTrackFilters<T extends FilterableTrack>(tracks: T[]) {
+export function useTrackFilters<T extends FilterableTrack>(
+  tracks: T[],
+  options: { discreet?: boolean } = {}
+) {
+  const discreet = options.discreet ?? false;
+  const [open, setOpen] = useState(false);
   const bounds = useMemo(() => {
     const d = tracks.map((t) => t.distanceKm).filter((v) => v != null) as number[];
     const e = tracks.map((t) => t.elevationGainM).filter((v) => v != null) as number[];
@@ -109,56 +114,80 @@ export function useTrackFilters<T extends FilterableTrack>(tracks: T[]) {
 
   const showFilters = tracks.length > 1 && (bounds.dMax > bounds.dMin || bounds.eMax > bounds.eMin);
 
-  const panel = showFilters ? (
-    <div className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
-      <style>{`
+  const styles = (
+    <style>{`
         .dual-range input[type=range]{position:absolute;left:0;top:0;width:100%;height:100%;margin:0;background:transparent;pointer-events:none;-webkit-appearance:none;appearance:none}
         .dual-range input[type=range]::-webkit-slider-runnable-track{background:transparent;height:100%}
         .dual-range input[type=range]::-moz-range-track{background:transparent}
         .dual-range input[type=range]::-webkit-slider-thumb{pointer-events:auto;-webkit-appearance:none;appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #16A34A;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
         .dual-range input[type=range]::-moz-range-thumb{pointer-events:auto;width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #16A34A;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:pointer}
       `}</style>
+  );
+
+  const sliders = (
+    <>
       {bounds.dMax > bounds.dMin && (
-        <RangeFilter
-          label="Distance"
-          unit="km"
-          min={bounds.dMin}
-          max={bounds.dMax}
-          step={1}
-          value={dist}
-          onChange={setDistSel}
-        />
+        <RangeFilter label="Distance" unit="km" min={bounds.dMin} max={bounds.dMax} step={1} value={dist} onChange={setDistSel} />
       )}
       {bounds.eMax > bounds.eMin && (
-        <RangeFilter
-          label="Dénivelé positif"
-          unit="m"
-          min={bounds.eMin}
-          max={bounds.eMax}
-          step={10}
-          value={ele}
-          onChange={setEleSel}
-        />
+        <RangeFilter label="Dénivelé positif" unit="m" min={bounds.eMin} max={bounds.eMax} step={10} value={ele} onChange={setEleSel} />
       )}
+    </>
+  );
+
+  const reset = () => {
+    setDistSel(null);
+    setEleSel(null);
+  };
+
+  const panel = !showFilters ? null : discreet ? (
+    <div className="mb-4">
+      {styles}
+      <div className="flex items-center gap-3 text-sm">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1 text-xs text-muted hover:text-ink"
+        >
+          <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+            <path d="M4 7h10 M18 7h2 M4 17h2 M10 17h10" />
+            <circle cx="16" cy="7" r="2" />
+            <circle cx="8" cy="17" r="2" />
+          </svg>
+          Filtres
+          {filtering && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#16A34A" }} />}
+          <span className="text-[10px]">{open ? "▲" : "▼"}</span>
+        </button>
+        {filtering && (
+          <>
+            <span className="text-xs text-muted">
+              {filtered.length} sur {tracks.length}
+            </span>
+            <button type="button" onClick={reset} className="text-xs text-muted underline">
+              Réinitialiser
+            </button>
+          </>
+        )}
+      </div>
+      {open && <div className="mt-3 flex flex-col gap-3 border-l-2 border-border pl-3">{sliders}</div>}
+    </div>
+  ) : (
+    <div className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
+      {styles}
+      {sliders}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted">
           {filtered.length} parcours sur {tracks.length}
         </span>
         {filtering && (
-          <button
-            type="button"
-            onClick={() => {
-              setDistSel(null);
-              setEleSel(null);
-            }}
-            className="text-accent underline"
-          >
+          <button type="button" onClick={reset} className="text-accent underline">
             Réinitialiser
           </button>
         )}
       </div>
     </div>
-  ) : null;
+  );
 
   return { filtered, panel };
 }
