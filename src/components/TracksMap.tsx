@@ -71,6 +71,7 @@ export function TracksMap({
   selectedId,
   hoveredId,
   onSelect,
+  hrefBase = "/mon-espace/parcours",
 }: {
   tracks: MapTrack[];
   /** id → couleur (stable, calculée sur la liste complète). */
@@ -78,6 +79,8 @@ export function TracksMap({
   selectedId: string | null;
   hoveredId: string | null;
   onSelect: (id: string | null) => void;
+  /** Début de l'URL de la fiche d'un parcours (suivi de l'id). */
+  hrefBase?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -346,7 +349,7 @@ export function TracksMap({
             </p>
           </div>
           <Link
-            href={`/mon-espace/parcours/${selected.id}`}
+            href={`${hrefBase}/${selected.id}`}
             className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold"
             style={{ background: "#16A34A", color: "#FFFFFF" }}
           >

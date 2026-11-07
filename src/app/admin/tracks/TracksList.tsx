@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { TrackThumbnail } from "@/components/TrackThumbnail";
+import { TracksMap, TRACK_COLORS } from "@/components/TracksMap";
+import { useTrackFilters } from "@/components/TrackFilters";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -32,7 +34,25 @@ export function TracksList() {
     mutate();
   }
 
-  const tracks = data?.tracks ?? [];
+  const tracks: any[] = useMemo(() => data?.tracks ?? [], [data]);
+  const { filtered, panel } = useTrackFilters(tracks);
+
+  const colors = useMemo(() => {
+    const m: Record<string, string> = {};
+    tracks.forEach((t, i) => (m[t.id] = TRACK_COLORS[i % TRACK_COLORS.length]));
+    return m;
+  }, [tracks]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedId && !filtered.some((t) => t.id === selectedId)) setSelectedId(null);
+  }, [filtered, selectedId]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    document.getElementById(`track-${selectedId}`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedId]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -57,6 +77,20 @@ export function TracksList() {
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
+      {tracks.length > 0 && (
+        <div>
+          {panel}
+          <TracksMap
+            tracks={filtered}
+            colors={colors}
+            selectedId={selectedId}
+            hoveredId={hoveredId}
+            onSelect={setSelectedId}
+            hrefBase="/admin/tracks"
+          />
+        </div>
+      )}
+
       {isLoading ? (
         <p className="text-muted">Chargement…</p>
       ) : tracks.length === 0 ? (
@@ -68,12 +102,26 @@ export function TracksList() {
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {tracks.map((t: any) => (
+          {filtered.length === 0 && (
+            <p className="text-muted sm:col-span-2">Aucun parcours ne correspond à ces filtres.</p>
+          )}
+          {filtered.map((t: any) => (
             <Link
               key={t.id}
+              id={`track-${t.id}`}
               href={`/admin/tracks/${t.id}`}
+              onMouseEnter={() => setHoveredId(t.id)}
+              onMouseLeave={() => setHoveredId(null)}
+              onFocus={() => setHoveredId(t.id)}
+              onBlur={() => setHoveredId(null)}
               className="flex items-center gap-4 rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent"
+              style={selectedId === t.id ? { borderColor: colors[t.id], borderWidth: 3 } : undefined}
             >
+              <span
+                className="h-12 w-1.5 shrink-0 rounded-full"
+                style={{ background: colors[t.id] }}
+                aria-hidden
+              />
               <TrackThumbnail gpxData={t.gpxData} width={64} height={64} />
               <div className="min-w-0">
                 <h3 className="mb-2 truncate font-display text-lg font-semibold">{t.name}</h3>
