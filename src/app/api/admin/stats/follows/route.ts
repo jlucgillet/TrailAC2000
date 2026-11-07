@@ -85,6 +85,8 @@ export async function GET() {
       .map((r) => ({
         key: r.key,
         type: r.type,
+        refId: r.refId,
+        exists: names.has(r.key),
         name: names.get(r.key) ?? "(supprimé)",
         total: r.total,
         visitors: r.visitors.size,

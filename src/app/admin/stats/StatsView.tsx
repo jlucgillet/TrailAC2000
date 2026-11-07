@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -7,6 +8,8 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 type Row = {
   key: string;
   type: "track" | "race";
+  refId: string;
+  exists: boolean;
   name: string;
   total: number;
   visitors: number;
@@ -88,7 +91,16 @@ export function StatsView() {
               {rows.map((r) => (
                 <tr key={r.key}>
                   <td className="px-4 py-3">
-                    {r.name}
+                    {r.exists ? (
+                      <Link
+                        href={r.type === "race" ? `/admin/races/${r.refId}` : `/admin/tracks/${r.refId}`}
+                        className="text-accent underline-offset-2 hover:underline"
+                      >
+                        {r.name} <span aria-hidden>↗</span>
+                      </Link>
+                    ) : (
+                      r.name
+                    )}
                     {r.type === "race" && <span className="ml-2 text-xs text-muted">(course)</span>}
                   </td>
                   <td className="px-4 py-3 tabular-nums font-medium">{r.total}</td>
