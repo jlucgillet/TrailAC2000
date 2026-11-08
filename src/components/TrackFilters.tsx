@@ -104,9 +104,9 @@ export function useTrackFilters<T extends FilterableTrack>(
   const eleFull = ele[0] === bounds.eMin && ele[1] === bounds.eMax;
   const filtering = !distFull || !eleFull;
 
-  // Tri : par défaut distance décroissante, puis dénivelé décroissant.
+  // Tri : par défaut distance croissante, puis dénivelé croissant.
   const [sortKey, setSortKey] = useState<"dist" | "ele">("dist");
-  const [sortDesc, setSortDesc] = useState(true);
+  const [sortDesc, setSortDesc] = useState(false);
 
   const filteredUnsorted = tracks.filter((t) => {
     const okD =
@@ -142,7 +142,7 @@ export function useTrackFilters<T extends FilterableTrack>(
               if (active) setSortDesc((v) => !v);
               else {
                 setSortKey(k);
-                setSortDesc(true);
+                setSortDesc(false);
               }
             }}
             className={`rounded-full border px-3 py-1 ${
