@@ -43,30 +43,42 @@ function haversineMeters(a: GpxPoint, b: GpxPoint): number {
 }
 
 /**
- * Distance totale (somme des segments) et dénivelé positif (somme des
- * montées). Un seuil minimal de variation d'altitude (1m) est appliqué
- * avant de compter une montée, pour limiter l'effet du bruit de mesure GPS
- * typique des traces grand public — le dénivelé obtenu reste une
- * estimation, comme sur la plupart des plateformes grand public.
+ * Distance totale (somme des segments) et dénivelé positif.
+ *
+ * Le D+ est calculé par seuil cumulatif (hystérésis) : on garde une altitude
+ * de référence et on ne compte une montée que lorsque l'altitude dépasse la
+ * référence d'au moins 3 m ; une descente de 3 m ou plus déplace la référence
+ * vers le bas. Contrairement à une somme de variations point à point avec
+ * seuil, ce calcul ne dépend pas de la densité des points (une trace Garmin
+ * à 1 point / 7 m donne le même résultat qu'une trace simplifiée) et filtre
+ * le bruit du capteur. Le résultat reste une estimation.
  */
+export const ELEVATION_NOISE_THRESHOLD_M = 3;
+
 export function computeGpxStats(points: GpxPoint[]): {
   distanceKm: number;
   elevationGainM: number;
 } {
   let distanceM = 0;
   let elevationGainM = 0;
-  const ELEVATION_NOISE_THRESHOLD_M = 1;
+  let ref: number | null = null;
 
   for (let i = 1; i < points.length; i++) {
     distanceM += haversineMeters(points[i - 1], points[i]);
+  }
 
-    const prevEle = points[i - 1].ele;
-    const curEle = points[i].ele;
-    if (prevEle !== null && curEle !== null) {
-      const delta = curEle - prevEle;
-      if (delta > ELEVATION_NOISE_THRESHOLD_M) {
-        elevationGainM += delta;
-      }
+  for (const p of points) {
+    if (p.ele === null) continue;
+    if (ref === null) {
+      ref = p.ele;
+      continue;
+    }
+    const delta = p.ele - ref;
+    if (delta >= ELEVATION_NOISE_THRESHOLD_M) {
+      elevationGainM += delta;
+      ref = p.ele;
+    } else if (delta <= -ELEVATION_NOISE_THRESHOLD_M) {
+      ref = p.ele;
     }
   }
 

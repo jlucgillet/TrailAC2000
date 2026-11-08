@@ -29,6 +29,8 @@ export function TrackDetail({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [reversing, setReversing] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState<string | null>(null);
   const [cursor, setCursor] = useState<{ lat: number; lon: number } | null>(null);
 
   async function handleRename(e: React.FormEvent) {
@@ -80,6 +82,23 @@ export function TrackDetail({
       setUploadError(result.error ?? "Erreur lors de l'inversion.");
       return;
     }
+    mutate();
+  }
+
+  async function handleRecalc() {
+    setRecalcMsg(null);
+    setUploadError(null);
+    setRecalculating(true);
+    const res = await fetch(`/api/admin/tracks/${trackId}/recalc`, { method: "POST" });
+    const result = await res.json().catch(() => ({}));
+    setRecalculating(false);
+    if (!res.ok) {
+      setUploadError(result.error ?? "Erreur lors du recalcul.");
+      return;
+    }
+    setRecalcMsg(
+      `D+ recalculé : ${result.previousElevationGainM} m → ${result.elevationGainM} m`
+    );
     mutate();
   }
 
@@ -180,6 +199,14 @@ export function TrackDetail({
         </Link>
         <button
           type="button"
+          onClick={handleRecalc}
+          disabled={recalculating || isLoading || points.length < 2}
+          className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
+        >
+          {recalculating ? "Calcul…" : "↻ Recalculer D+"}
+        </button>
+        <button
+          type="button"
           onClick={handleReverse}
           disabled={reversing || isLoading || points.length < 2}
           className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
@@ -194,6 +221,7 @@ export function TrackDetail({
         </button>
       </div>
       {uploadError && <p className="text-sm text-danger">{uploadError}</p>}
+      {recalcMsg && <p className="text-sm text-muted">{recalcMsg}</p>}
       <p className="text-xs text-muted">
         Remplacer le fichier ou inverser le sens recalcule automatiquement la distance et le
         dénivelé affichés ci-dessus, ainsi que la carte. Le nom du parcours n&rsquo;est pas modifié :
