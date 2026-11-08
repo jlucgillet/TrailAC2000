@@ -47,13 +47,13 @@ function haversineMeters(a: GpxPoint, b: GpxPoint): number {
  *
  * Le D+ est calculé par seuil cumulatif (hystérésis) : on garde une altitude
  * de référence et on ne compte une montée que lorsque l'altitude dépasse la
- * référence d'au moins 3 m ; une descente de 3 m ou plus déplace la référence
+ * référence d'au moins 1 m ; une descente de 1 m ou plus déplace la référence
  * vers le bas. Contrairement à une somme de variations point à point avec
  * seuil, ce calcul ne dépend pas de la densité des points (une trace Garmin
  * à 1 point / 7 m donne le même résultat qu'une trace simplifiée) et filtre
  * le bruit du capteur. Le résultat reste une estimation.
  */
-export const ELEVATION_NOISE_THRESHOLD_M = 3;
+export const ELEVATION_NOISE_THRESHOLD_M = 1;
 
 export function computeGpxStats(points: GpxPoint[]): {
   distanceKm: number;
