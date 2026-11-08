@@ -104,13 +104,58 @@ export function useTrackFilters<T extends FilterableTrack>(
   const eleFull = ele[0] === bounds.eMin && ele[1] === bounds.eMax;
   const filtering = !distFull || !eleFull;
 
-  const filtered = tracks.filter((t) => {
+  // Tri : par défaut distance décroissante, puis dénivelé décroissant.
+  const [sortKey, setSortKey] = useState<"dist" | "ele">("dist");
+  const [sortDesc, setSortDesc] = useState(true);
+
+  const filteredUnsorted = tracks.filter((t) => {
     const okD =
       distFull || (t.distanceKm != null && t.distanceKm >= dist[0] - 0.5 && t.distanceKm <= dist[1] + 0.5);
     const okE =
       eleFull || (t.elevationGainM != null && t.elevationGainM >= ele[0] && t.elevationGainM <= ele[1]);
     return okD && okE;
   });
+
+  const filtered = useMemo(() => {
+    const dir = sortDesc ? -1 : 1;
+    const dv = (t: FilterableTrack) => t.distanceKm ?? -1;
+    const ev = (t: FilterableTrack) => t.elevationGainM ?? -1;
+    const [first, second] = sortKey === "dist" ? [dv, ev] : [ev, dv];
+    return [...filteredUnsorted].sort(
+      (a, b) => dir * (first(a) - first(b)) || dir * (second(a) - second(b))
+    );
+  }, [filteredUnsorted, sortKey, sortDesc]);
+
+  const showSort = tracks.length > 1;
+
+  const sortControl = showSort ? (
+    <div className="flex items-center gap-1.5 text-xs text-muted" role="group" aria-label="Tri des parcours">
+      <span>Tri</span>
+      {(["dist", "ele"] as const).map((k) => {
+        const active = sortKey === k;
+        return (
+          <button
+            key={k}
+            type="button"
+            aria-pressed={active}
+            onClick={() => {
+              if (active) setSortDesc((v) => !v);
+              else {
+                setSortKey(k);
+                setSortDesc(true);
+              }
+            }}
+            className={`rounded-full border px-3 py-1 ${
+              active ? "border-accent text-ink" : "border-border hover:text-ink"
+            }`}
+          >
+            {k === "dist" ? "Distance" : "Dénivelé"}
+            {active ? (sortDesc ? " ↓" : " ↑") : ""}
+          </button>
+        );
+      })}
+    </div>
+  ) : null;
 
   const showFilters = tracks.length > 1 && (bounds.dMax > bounds.dMin || bounds.eMax > bounds.eMin);
 
@@ -140,10 +185,11 @@ export function useTrackFilters<T extends FilterableTrack>(
     setEleSel(null);
   };
 
-  const panel = !showFilters ? null : discreet ? (
+  const panel = !showFilters && !showSort ? null : discreet ? (
     <div className="mb-4">
       {styles}
-      <div className="flex items-center gap-3 text-sm">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        {showFilters && (
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -159,6 +205,8 @@ export function useTrackFilters<T extends FilterableTrack>(
           {filtering && <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#16A34A" }} />}
           <span className="text-[10px]">{open ? "▲" : "▼"}</span>
         </button>
+        )}
+        {sortControl}
         {filtering && (
           <>
             <span className="text-xs text-muted">
@@ -170,12 +218,13 @@ export function useTrackFilters<T extends FilterableTrack>(
           </>
         )}
       </div>
-      {open && <div className="mt-3 flex flex-col gap-3 border-l-2 border-border pl-3">{sliders}</div>}
+      {showFilters && open && <div className="mt-3 flex flex-col gap-3 border-l-2 border-border pl-3">{sliders}</div>}
     </div>
   ) : (
     <div className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
       {styles}
       {sliders}
+      {sortControl}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted">
           {filtered.length} parcours sur {tracks.length}
