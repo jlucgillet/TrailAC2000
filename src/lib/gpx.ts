@@ -8,26 +8,32 @@ export type GpxPoint = { lat: number; lon: number; ele: number | null };
  * dépendance supplémentaire.
  */
 export function parseGpxPoints(xml: string): GpxPoint[] {
-  const points: GpxPoint[] = [];
-  const trkptRegex = /<trkpt\b([^>]*)>([\s\S]*?)<\/trkpt>/g;
-  let match: RegExpExecArray | null;
+  // Les traces (<trkpt>) sont prioritaires ; à défaut on lit les itinéraires
+  // (<rtept>), que produisent certains planificateurs (Komoot, Garmin
+  // Course...).
+  const fromTag = (tag: string): GpxPoint[] => {
+    const points: GpxPoint[] = [];
+    const regex = new RegExp("<" + tag + "\\b([^>]*)>([\\s\\S]*?)</" + tag + ">", "g");
+    let match: RegExpExecArray | null;
+    while ((match = regex.exec(xml))) {
+      const attrs = match[1];
+      const body = match[2];
+      const latMatch = attrs.match(/lat="(-?[\d.]+)"/);
+      const lonMatch = attrs.match(/lon="(-?[\d.]+)"/);
+      if (!latMatch || !lonMatch) continue;
 
-  while ((match = trkptRegex.exec(xml))) {
-    const attrs = match[1];
-    const body = match[2];
-    const latMatch = attrs.match(/lat="(-?[\d.]+)"/);
-    const lonMatch = attrs.match(/lon="(-?[\d.]+)"/);
-    if (!latMatch || !lonMatch) continue;
+      const eleMatch = body.match(/<ele>(-?[\d.]+)<\/ele>/);
+      points.push({
+        lat: parseFloat(latMatch[1]),
+        lon: parseFloat(lonMatch[1]),
+        ele: eleMatch ? parseFloat(eleMatch[1]) : null,
+      });
+    }
+    return points;
+  };
 
-    const eleMatch = body.match(/<ele>(-?[\d.]+)<\/ele>/);
-    points.push({
-      lat: parseFloat(latMatch[1]),
-      lon: parseFloat(lonMatch[1]),
-      ele: eleMatch ? parseFloat(eleMatch[1]) : null,
-    });
-  }
-
-  return points;
+  const track = fromTag("trkpt");
+  return track.length > 0 ? track : fromTag("rtept");
 }
 
 function haversineMeters(a: GpxPoint, b: GpxPoint): number {
