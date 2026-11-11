@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { TrackThumbnail } from "@/components/TrackThumbnail";
 import { TracksMap, TRACK_COLORS } from "@/components/TracksMap";
@@ -10,6 +11,7 @@ import { useTrackFilters } from "@/components/TrackFilters";
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export function TracksList() {
+  const router = useRouter();
   const { data, isLoading, mutate } = useSWR("/api/admin/tracks", fetcher);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +31,11 @@ export function TracksList() {
 
     if (!res.ok) {
       setError(result.error ?? "Erreur lors de l'import.");
+      return;
+    }
+    // Ouvre directement la fiche du parcours créé, pour le modifier si besoin.
+    if (result.id) {
+      router.push(`/admin/tracks/${result.id}`);
       return;
     }
     mutate();
