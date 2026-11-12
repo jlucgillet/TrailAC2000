@@ -304,6 +304,7 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
   const modeRef = useRef<Mode>("foot");
   modeRef.current = mode;
   const [basemap, setBasemap] = useState<BasemapKey>("topo");
+  const [fs, setFs] = useState(false);
   const [ready, setReady] = useState(false);
   const [eleTick, setEleTick] = useState(0);
   const [eleLoading, setEleLoading] = useState(false);
@@ -531,6 +532,26 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
+  // Plein écran : recalcule la taille de la carte, Échap pour quitter,
+  // et empêche la page de défiler derrière.
+  useEffect(() => {
+    const t1 = setTimeout(() => mapRef.current?.invalidateSize(), 60);
+    const t2 = setTimeout(() => mapRef.current?.invalidateSize(), 300);
+    if (!fs) return () => { clearTimeout(t1); clearTimeout(t2); };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFs(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      document.body.style.overflow = prev;
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [fs]);
+
   // ---------- Distance, altitude, dénivelé ----------
   const path = useMemo(() => {
     const out: LL[] = [];
@@ -757,13 +778,15 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
       </form>
 
       {/* Carte */}
-      <div className="relative">
+      <div className={fs ? "fixed inset-0 z-[3000] bg-bg" : "relative"}>
+        <div className={fs ? "h-full w-full" : "h-[60vh] min-h-[360px] w-full"}>
+          <div
+            ref={containerRef}
+            className="h-full w-full overflow-hidden rounded-xl border border-border"
+          />
+        </div>
         <div
-          ref={containerRef}
-          className="h-[60vh] min-h-[360px] w-full overflow-hidden rounded-xl border border-border"
-        />
-        <div
-          className="absolute right-3 top-3 z-[1000] flex gap-1 rounded-lg p-1"
+          className="absolute right-3 top-3 z-[1000] flex items-center gap-1 rounded-lg p-1"
           style={{ background: "#FFFFFF", boxShadow: "0 1px 5px rgba(0,0,0,0.4)" }}
         >
           {(Object.keys(BASEMAPS) as BasemapKey[]).map((k) => (
@@ -781,9 +804,69 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
               {BASEMAPS[k].label}
             </button>
           ))}
+          <span aria-hidden style={{ width: 1, height: 16, background: "#D1D5DB" }} />
+          <button
+            type="button"
+            onClick={() => setFs((v) => !v)}
+            aria-label={fs ? "Quitter le plein écran" : "Carte en plein écran"}
+            title={fs ? "Quitter le plein écran (Échap)" : "Plein écran"}
+            className="rounded px-2 py-1 text-xs"
+            style={{ color: "#374151" }}
+          >
+            {fs ? "✕ Quitter" : "⛶"}
+          </button>
         </div>
+
+        {fs && (
+          <>
+            {/* Modes + annulation, discrets comme le choix du fond de carte */}
+            <div
+              className="absolute right-3 top-[52px] z-[1000] flex items-center gap-1 rounded-lg p-1"
+              style={{ background: "#FFFFFF", boxShadow: "0 1px 5px rgba(0,0,0,0.4)" }}
+            >
+              {(Object.keys(MODE_INFO) as Mode[]).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  aria-pressed={mode === m}
+                  className="rounded px-2 py-1 text-xs"
+                  style={{
+                    color: m === mode ? "#15803D" : "#374151",
+                    fontWeight: m === mode ? 700 : 400,
+                    background: m === mode ? "#F0FDF4" : "transparent",
+                  }}
+                >
+                  {MODE_INFO[m].icon} {MODE_INFO[m].label}
+                </button>
+              ))}
+              <span aria-hidden style={{ width: 1, height: 16, background: "#D1D5DB" }} />
+              <button
+                type="button"
+                onClick={() => actions.undo()}
+                disabled={data.wps.length === 0}
+                aria-label="Supprimer le dernier point"
+                title="Supprimer le dernier point"
+                className="rounded px-2 py-1 text-xs disabled:opacity-40"
+                style={{ color: "#374151" }}
+              >
+                ↶ Dernier point
+              </button>
+            </div>
+
+            {/* Distance et dénivelé cumulés */}
+            <div
+              className="pointer-events-none absolute bottom-8 left-3 z-[1000] rounded-lg px-3 py-1.5 text-xs tabular-nums"
+              style={{ background: "#FFFFFF", color: "#111827", boxShadow: "0 1px 5px rgba(0,0,0,0.4)" }}
+            >
+              <b>{stats.distanceKm.toFixed(2)} km</b> · D+ <b>{stats.up} m</b> · D− <b>{stats.down} m</b>
+              {eleLoading && <span className="ml-1 animate-pulse">…</span>}
+            </div>
+          </>
+        )}
+
         {data.wps.length === 0 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1000] flex justify-center px-4">
+          <div className="pointer-events-none absolute inset-x-0 bottom-14 z-[1000] flex justify-center px-4">
             <p className="rounded-full px-4 py-2 text-sm" style={{ background: "rgba(17,24,39,.85)", color: "#fff" }}>
               Touche la carte pour placer le point de départ
             </p>
