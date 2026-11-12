@@ -10,7 +10,7 @@ export default function HomePage() {
         </div>
 
         <h1 className="mb-2 font-display text-4xl font-semibold">Trail AC2000</h1>
-        <p className="mb-12 text-muted">Chronométrage de course par QR code</p>
+        <p className="mb-12 text-muted">Parcours trail et chronométrage</p>
 
         <div className="flex flex-col gap-4">
           <Link

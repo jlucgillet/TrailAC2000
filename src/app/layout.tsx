@@ -14,7 +14,7 @@ const barlowCondensed = Barlow_Condensed({
 
 export const metadata: Metadata = {
   title: "Trail AC2000 — Chronométrage",
-  description: "Chronométrage de course par QR code",
+  description: "Trail AC2000 - Parcours trail et chronométrage",
   manifest: "/manifest.json",
 };
 

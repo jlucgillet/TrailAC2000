@@ -1,7 +1,7 @@
 {
-  "name": "Trail AC2000 — Chronométrage",
+  "name": "Trail AC2000",
   "short_name": "Trail AC2000",
-  "description": "Chronométrage de course par QR code",
+  "description": "Trail AC2000 - Parcours trail et chronométrage",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0B1410",
