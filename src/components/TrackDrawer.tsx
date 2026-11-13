@@ -663,6 +663,56 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
     );
   }
 
+  // ---------- Confirmation avant de quitter sans enregistrer ----------
+  const initialSig = useMemo(() => JSON.stringify(initRef.current!.wps), []);
+  const dirty =
+    JSON.stringify(data.wps) !== initialSig ||
+    (editing ? name.trim() !== "" && name.trim() !== initial!.name : name.trim() !== "");
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty;
+  const bypassRef = useRef(false); // vrai juste après un enregistrement réussi
+
+  useEffect(() => {
+    const MSG = "Tu as des modifications non enregistrées. Quitter sans enregistrer ?";
+    const active = () => dirtyRef.current && !bypassRef.current;
+
+    // Fermeture de l'onglet, rechargement, saisie d'une autre adresse.
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!active()) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    // Clic sur un lien interne (menu, « Annuler », « ← Retour »…).
+    const onClick = (e: MouseEvent) => {
+      if (!active() || e.defaultPrevented || e.button !== 0) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      const a = (e.target as HTMLElement | null)?.closest?.("a[href]") as HTMLAnchorElement | null;
+      if (!a || a.target === "_blank" || a.hasAttribute("download")) return;
+      let url: URL;
+      try {
+        url = new URL(a.href, window.location.href);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      if (url.pathname === window.location.pathname && url.search === window.location.search) return;
+      if (!window.confirm(MSG)) {
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        bypassRef.current = true; // déjà confirmé : pas de seconde alerte du navigateur
+      }
+    };
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClick, true);
+    };
+  }, []);
+
   // ---------- Enregistrement ----------
   async function handleSave() {
     setError(null);
@@ -694,12 +744,14 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
           });
           if (!r2.ok) throw new Error("Tracé enregistré, mais le nom n'a pas pu être modifié.");
         }
+        bypassRef.current = true;
         router.push(`/admin/tracks/${initial.trackId}`);
         return;
       }
       const res = await fetch("/api/admin/tracks", { method: "POST", body: form });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(json.error ?? "Erreur lors de l'enregistrement.");
+      bypassRef.current = true;
       router.push(`/admin/tracks/${json.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur lors de l'enregistrement.");
