@@ -1,18 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 type Race = {
   id: string;
   name: string;
-  date: string;
-  location: string | null;
   status: "draft" | "active" | "closed" | "archived";
   publicResultsEnabled: boolean;
-  emailNotificationsEnabled: boolean;
-  visibleInAthleteSpace: boolean;
-  openRegistration: boolean;
 };
 
 const STATUS_OPTIONS: { value: Race["status"]; label: string; hint: string }[] = [
@@ -28,18 +23,8 @@ export function SettingsTab({
   race: Race;
   onUpdate: (patch: Partial<Race>) => void;
 }) {
-  const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [name, setName] = useState(race.name);
-  const [date, setDate] = useState(race.date.slice(0, 10));
-  const [location, setLocation] = useState(race.location ?? "");
-  const [infoSaved, setInfoSaved] = useState(false);
-
-  const [confirmName, setConfirmName] = useState("");
-  const [purging, setPurging] = useState(false);
-  const [purgeError, setPurgeError] = useState<string | null>(null);
 
   async function updateField(patch: Partial<Race>) {
     setSaving(true);
@@ -58,77 +43,8 @@ export function SettingsTab({
     onUpdate(patch);
   }
 
-  async function handleSaveInfo(e: React.FormEvent) {
-    e.preventDefault();
-    setInfoSaved(false);
-    await updateField({ name, date: new Date(date).toISOString(), location });
-    setInfoSaved(true);
-  }
-
-  async function handleArchive() {
-    if (!confirm("Archiver cette course ?")) return;
-    await fetch(`/api/admin/races/${race.id}`, { method: "DELETE" });
-    window.location.href = "/admin/dashboard";
-  }
-
-  async function handlePurge() {
-    setPurging(true);
-    setPurgeError(null);
-    const res = await fetch(`/api/admin/races/${race.id}/purge`, { method: "DELETE" });
-    const data = await res.json();
-    setPurging(false);
-    if (!res.ok) {
-      setPurgeError(data.error ?? "Erreur lors de la suppression.");
-      return;
-    }
-    router.push("/admin/dashboard");
-  }
-
   return (
     <div className="flex max-w-xl flex-col gap-8">
-      <section>
-        <h3 className="mb-3 font-display text-xl font-semibold">Informations générales</h3>
-        <form onSubmit={handleSaveInfo} className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-muted">Nom de la course</span>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              className="rounded-lg border border-border bg-surface px-3 py-2"
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-muted">Date</span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="rounded-lg border border-border bg-surface px-3 py-2"
-              />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-muted">Lieu</span>
-              <input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="rounded-lg border border-border bg-surface px-3 py-2"
-              />
-            </label>
-          </div>
-          <button
-            type="submit"
-            disabled={saving}
-            className="mt-1 w-fit rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
-          >
-            {saving ? "Enregistrement…" : "Enregistrer"}
-          </button>
-          {infoSaved && !error && <p className="text-sm text-accent">Enregistré.</p>}
-        </form>
-      </section>
-
       <section>
         <h3 className="mb-3 font-display text-xl font-semibold">Statut de la course</h3>
         <div className="flex flex-col gap-2">
@@ -170,116 +86,25 @@ export function SettingsTab({
         </label>
       </section>
 
-      <section>
-        <h3 className="mb-3 font-display text-xl font-semibold">Espace concurrent</h3>
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={race.visibleInAthleteSpace}
-            onChange={(e) => updateField({ visibleInAthleteSpace: e.target.checked })}
-            className="mt-1"
-          />
-          <span>
-            <span className="block">Afficher cette course dans l&rsquo;espace concurrent</span>
-            <span className="block text-sm text-muted">
-              Désactive-le pour une course de test ou en préparation : elle n&rsquo;apparaîtra pas
-              dans la section Parcours de Mon Espace, même si un GPX est déjà importé. Ça ne
-              masque pas la course pour un concurrent déjà inscrit dans "Mes courses".
-            </span>
-          </span>
-        </label>
-      </section>
-
-      <section>
-        <h3 className="mb-3 font-display text-xl font-semibold">Notifications email</h3>
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={race.emailNotificationsEnabled}
-            onChange={(e) => updateField({ emailNotificationsEnabled: e.target.checked })}
-            className="mt-1"
-          />
-          <span>
-            <span className="block">
-              Prévenir par email les administrateurs concernés à chaque arrivée sur cette course
-            </span>
-            <span className="block text-sm text-muted">
-              Désactive-le pour une course à fort volume de scans, ou pendant des tests, si tu
-              veux éviter l&rsquo;envoi systématique d&rsquo;emails. L&rsquo;envoi n&rsquo;a de
-              toute façon aucun effet sur la vitesse d&rsquo;enregistrement du chrono lui-même.
-            </span>
-          </span>
-        </label>
-      </section>
-
-      <section>
-        <h3 className="mb-3 font-display text-xl font-semibold">Inscription des concurrents</h3>
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={race.openRegistration}
-            onChange={(e) => updateField({ openRegistration: e.target.checked })}
-            className="mt-1"
-          />
-          <span>
-            <span className="block">
-              Autoriser un concurrent à participer sans faire partie de la liste
-            </span>
-            <span className="block text-sm text-muted">
-              Activé (recommandé) : n&rsquo;importe qui peut s&rsquo;identifier par téléphone et
-              participer. Désactivé : seuls les numéros déjà présents dans l&rsquo;onglet
-              Concurrents (ajout manuel, import CSV ou copie depuis une autre course) peuvent
-              s&rsquo;identifier et scanner — un numéro inconnu est refusé.
-            </span>
-          </span>
-        </label>
-      </section>
-
       {saving && <p className="text-sm text-muted">Enregistrement…</p>}
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <section className="rounded-xl border border-danger/40 p-4">
         <h3 className="mb-2 font-display text-xl font-semibold text-danger">Zone sensible</h3>
-
-        <div className="mb-5">
-          <p className="mb-3 text-sm text-muted">
-            Archiver la course la retire des listes actives. Les données sont conservées
-            (traçabilité), rien n&rsquo;est supprimé définitivement depuis cette action.
-          </p>
-          <button
-            onClick={handleArchive}
-            className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
-          >
-            Archiver la course
-          </button>
-        </div>
-
-        {race.status === "closed" && (
-          <div className="border-t border-danger/30 pt-5">
-            <p className="mb-1 font-medium text-danger">Suppression définitive</p>
-            <p className="mb-3 text-sm text-muted">
-              Supprime la course, ses concurrents et tous ses résultats <b className="text-ink">de
-              façon irréversible</b>. Réservé aux courses clôturées. Pour confirmer, retape le nom
-              exact de la course ci-dessous.
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                value={confirmName}
-                onChange={(e) => setConfirmName(e.target.value)}
-                placeholder={race.name}
-                className="rounded-lg border border-danger/50 bg-surface px-3 py-2 text-sm"
-              />
-              <button
-                onClick={handlePurge}
-                disabled={confirmName !== race.name || purging}
-                className="rounded-lg bg-danger px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
-              >
-                {purging ? "Suppression…" : "Supprimer définitivement"}
-              </button>
-            </div>
-            {purgeError && <p className="mt-2 text-sm text-danger">{purgeError}</p>}
-          </div>
-        )}
+        <p className="mb-3 text-sm text-muted">
+          Archiver la course la retire des listes actives. Les données sont conservées (traçabilité),
+          rien n&rsquo;est supprimé définitivement depuis cette interface.
+        </p>
+        <button
+          onClick={async () => {
+            if (!await confirmDialog("Archiver cette course ?")) return;
+            await fetch(`/api/admin/races/${race.id}`, { method: "DELETE" });
+            window.location.href = "/admin/dashboard";
+          }}
+          className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
+        >
+          Archiver la course
+        </button>
       </section>
     </div>
   );

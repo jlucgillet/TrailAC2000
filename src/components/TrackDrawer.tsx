@@ -1,5 +1,6 @@
 "use client";
 
+import { confirmDialog } from "@/components/ConfirmDialog";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import "leaflet/dist/leaflet.css";
@@ -392,8 +393,8 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
       const { wps } = dataRef.current;
       if (wps.length >= 2) actions.addPoint(wps[0]);
     },
-    clear() {
-      if (dataRef.current.wps.length && !confirm("Effacer tout le tracé ?")) return;
+    async clear() {
+      if (dataRef.current.wps.length && !await confirmDialog("Effacer tout le tracé ?")) return;
       commit({ wps: [], segs: [] });
     },
   };
@@ -697,12 +698,14 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
       }
       if (url.origin !== window.location.origin) return;
       if (url.pathname === window.location.pathname && url.search === window.location.search) return;
-      if (!window.confirm(MSG)) {
-        e.preventDefault();
-        e.stopPropagation();
-      } else {
+      // Confirmation aux couleurs de l'app, puis on relance le clic d'origine.
+      e.preventDefault();
+      e.stopPropagation();
+      void confirmDialog(MSG).then((ok) => {
+        if (!ok) return;
         bypassRef.current = true; // déjà confirmé : pas de seconde alerte du navigateur
-      }
+        a.click();
+      });
     };
 
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -718,7 +721,7 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
     setError(null);
     if (
       missingEle > 0 &&
-      !confirm(
+      !await confirmDialog(
         "L'altitude n'a pas pu être calculée pour tout le tracé : le dénivelé sera incomplet. Enregistrer quand même ?"
       )
     ) {

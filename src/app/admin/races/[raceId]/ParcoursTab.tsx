@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -11,32 +12,6 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
   const { data, isLoading, mutate } = useSWR(`/api/admin/races/${raceId}/gpx`, fetcher);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingStats, setEditingStats] = useState(false);
-  const [distanceInput, setDistanceInput] = useState("");
-  const [elevationInput, setElevationInput] = useState("");
-  const [savingStats, setSavingStats] = useState(false);
-
-  function openStatsEdit() {
-    setDistanceInput(data?.distanceKm != null ? String(data.distanceKm) : "");
-    setElevationInput(data?.elevationGainM != null ? String(data.elevationGainM) : "");
-    setEditingStats(true);
-  }
-
-  async function handleSaveStats(e: React.FormEvent) {
-    e.preventDefault();
-    setSavingStats(true);
-    await fetch(`/api/admin/races/${raceId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        distanceKm: distanceInput ? Number(distanceInput) : null,
-        elevationGainM: elevationInput ? Number(elevationInput) : null,
-      }),
-    });
-    setSavingStats(false);
-    setEditingStats(false);
-    mutate();
-  }
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -59,7 +34,7 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
   }
 
   async function handleRemove() {
-    if (!confirm("Supprimer le tracé GPX de cette course ?")) return;
+    if (!await confirmDialog("Supprimer le tracé GPX de cette course ?")) return;
     await fetch(`/api/admin/races/${raceId}/gpx`, { method: "DELETE" });
     mutate();
   }
@@ -82,14 +57,6 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
           />
         </label>
         {data?.gpxData && (
-          <a
-            href={`/api/admin/races/${raceId}/gpx/download`}
-            className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink"
-          >
-            Télécharger le fichier GPX
-          </a>
-        )}
-        {data?.gpxData && (
           <button
             onClick={handleRemove}
             className="rounded-lg border border-danger px-4 py-2 text-sm text-danger"
@@ -101,175 +68,31 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
 
       {error && <p className="text-sm text-danger">{error}</p>}
 
-      {!data?.gpxData && (
-        <p className="max-w-md text-muted">
-          Aucun tracé importé. Importe un fichier <code>.gpx</code> (export Strava, Garmin
-          Connect, Komoot...) pour afficher le parcours sur une carte — ou renseigne la distance
-          et le dénivelé manuellement ci-dessous.
-        </p>
-      )}
-
-      {editingStats ? (
-        <form
-          onSubmit={handleSaveStats}
-          className="grid max-w-md gap-3 rounded-xl border border-border bg-surface p-4 sm:grid-cols-2"
-        >
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-muted">Distance (km)</span>
-            <input
-              type="number"
-              step="0.1"
-              value={distanceInput}
-              onChange={(e) => setDistanceInput(e.target.value)}
-              className="rounded-lg border border-border bg-bg px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-sm text-muted">Dénivelé positif (m)</span>
-            <input
-              type="number"
-              step="1"
-              value={elevationInput}
-              onChange={(e) => setElevationInput(e.target.value)}
-              className="rounded-lg border border-border bg-bg px-3 py-2"
-            />
-          </label>
-          <div className="flex gap-2 sm:col-span-2">
-            <button
-              type="submit"
-              disabled={savingStats}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg disabled:opacity-50"
-            >
-              {savingStats ? "…" : "Enregistrer"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditingStats(false)}
-              className="rounded-lg border border-border px-4 py-2 text-sm text-muted"
-            >
-              Annuler
-            </button>
-          </div>
-        </form>
-      ) : (
-        <div className="flex max-w-md flex-wrap items-center gap-4">
-          <div className="grid flex-1 grid-cols-2 gap-4">
+      {data?.gpxData ? (
+        <>
+          <div className="grid max-w-md grid-cols-2 gap-4">
             <div className="rounded-xl border border-border bg-surface p-5">
               <p className="text-sm text-muted">Distance</p>
               <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-                {data?.distanceKm != null ? `${data.distanceKm.toFixed(1)} km` : "—"}
+                {data.distanceKm?.toFixed(1)} km
               </p>
             </div>
             <div className="rounded-xl border border-border bg-surface p-5">
               <p className="text-sm text-muted">Dénivelé positif</p>
               <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-                {data?.elevationGainM != null ? `${Math.round(data.elevationGainM)} m` : "—"}
+                {Math.round(data.elevationGainM ?? 0)} m
               </p>
             </div>
           </div>
-          <button
-            onClick={openStatsEdit}
-            className="rounded-lg border border-border px-3 py-2 text-xs text-muted hover:text-ink"
-          >
-            Modifier
-          </button>
-        </div>
-      )}
 
-      {data?.gpxData && (
-        <>
-          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele }))} large fullscreenControl basemapControl />
-          <ShareSection raceId={raceId} data={data} onUpdated={() => mutate()} />
+          <GpxMap points={points.map((p) => ({ lat: p.lat, lon: p.lon }))} />
         </>
-      )}
-    </div>
-  );
-}
-
-function ShareSection({
-  raceId,
-  data,
-  onUpdated,
-}: {
-  raceId: string;
-  data: any;
-  onUpdated: () => void;
-}) {
-  const [toggling, setToggling] = useState(false);
-  const [regenerating, setRegenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const shareUrl =
-    data?.gpxShareToken && typeof window !== "undefined"
-      ? `${window.location.origin}/trace/${data.gpxShareToken}`
-      : "";
-
-  async function handleToggle(enabled: boolean) {
-    setToggling(true);
-    await fetch(`/api/admin/races/${raceId}/gpx`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gpxShareEnabled: enabled }),
-    });
-    setToggling(false);
-    onUpdated();
-  }
-
-  async function handleRegenerate() {
-    if (!confirm("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
-    setRegenerating(true);
-    await fetch(`/api/admin/races/${raceId}/gpx/regenerate-share`, { method: "POST" });
-    setRegenerating(false);
-    onUpdated();
-  }
-
-  function handleCopy() {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <div className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="mb-3 font-display text-lg font-semibold">Partage</h3>
-      <label className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={!!data?.gpxShareEnabled}
-          onChange={(e) => handleToggle(e.target.checked)}
-          disabled={toggling}
-          className="mt-1"
-        />
-        <span>
-          <span className="block">Partager ce parcours via un lien public</span>
-          <span className="block text-sm text-muted">
-            Toute personne disposant du lien peut consulter la carte, la distance et le dénivelé,
-            et télécharger le GPX — sans compte, en lecture seule (aucune modification possible).
-          </span>
-        </span>
-      </label>
-
-      {data?.gpxShareEnabled && (
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <input
-            readOnly
-            value={shareUrl}
-            className="min-w-[260px] flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-sm text-muted"
-          />
-          <button
-            onClick={handleCopy}
-            className="rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-ink"
-          >
-            {copied ? "Copié !" : "Copier"}
-          </button>
-          <button
-            onClick={handleRegenerate}
-            disabled={regenerating}
-            className="rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
-          >
-            {regenerating ? "…" : "Nouveau lien"}
-          </button>
-        </div>
+      ) : (
+        <p className="max-w-md text-muted">
+          Aucun tracé importé. Importez un fichier <code>.gpx</code> (export Strava, Garmin
+          Connect, Komoot...) pour afficher le parcours sur une carte, la distance totale et le
+          dénivelé positif.
+        </p>
       )}
     </div>
   );

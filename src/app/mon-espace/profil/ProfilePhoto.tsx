@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 type Photo = { id: string; shared: boolean } | null;
 
@@ -86,7 +87,7 @@ export function ProfilePhoto({ name, initialPhoto }: { name: string; initialPhot
   }
 
   async function remove() {
-    if (!confirm("Supprimer ta photo de profil ?")) return;
+    if (!await confirmDialog("Supprimer ta photo de profil ?")) return;
     setBusy(true);
     await fetch("/api/athlete/photo", { method: "DELETE" });
     setPhoto(null);

@@ -1,24 +1,15 @@
 "use client";
 
 import useSWR from "swr";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export function QrCodesTab({
-  raceId,
-  raceName,
-  distanceKm,
-  elevationGainM,
-}: {
-  raceId: string;
-  raceName: string;
-  distanceKm?: number | null;
-  elevationGainM?: number | null;
-}) {
+export function QrCodesTab({ raceId, raceName }: { raceId: string; raceName: string }) {
   const { data, isLoading, mutate } = useSWR(`/api/admin/races/${raceId}/qrcodes`, fetcher);
 
   async function regenerate(target: "start" | "finish") {
-    if (!confirm("Les QR codes déjà imprimés pour ce point de contrôle ne fonctionneront plus. Continuer ?")) {
+    if (!await confirmDialog("Les QR codes déjà imprimés pour ce point de contrôle ne fonctionneront plus. Continuer ?")) {
       return;
     }
     await fetch(`/api/admin/races/${raceId}/qrcodes`, {
@@ -32,44 +23,23 @@ export function QrCodesTab({
   if (isLoading) return <p className="text-muted">Génération des QR codes…</p>;
 
   return (
-    <div className="flex flex-col gap-6">
-      {data?.start?.png && data?.finish?.png && (
-        <div>
-          <button
-            onClick={() =>
-              generateCombinedPoster({
-                startPng: data.start.png,
-                finishPng: data.finish.png,
-                raceName,
-                distanceKm,
-                elevationGainM,
-              })
-            }
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg"
-          >
-            🖨️ Imprimer les 2 QR codes sur une page
-          </button>
-        </div>
-      )}
-
-      <div className="grid gap-6 sm:grid-cols-2">
-        <QrCard
-          title="DÉPART"
-          kind="start"
-          raceName={raceName}
-          png={data?.start?.png}
-          url={data?.start?.url}
-          onRegenerate={() => regenerate("start")}
-        />
-        <QrCard
-          title="ARRIVÉE"
-          kind="finish"
-          raceName={raceName}
-          png={data?.finish?.png}
-          url={data?.finish?.url}
-          onRegenerate={() => regenerate("finish")}
-        />
-      </div>
+    <div className="grid gap-6 sm:grid-cols-2">
+      <QrCard
+        title="DÉPART"
+        kind="start"
+        raceName={raceName}
+        png={data?.start?.png}
+        url={data?.start?.url}
+        onRegenerate={() => regenerate("start")}
+      />
+      <QrCard
+        title="ARRIVÉE"
+        kind="finish"
+        raceName={raceName}
+        png={data?.finish?.png}
+        url={data?.finish?.url}
+        onRegenerate={() => regenerate("finish")}
+      />
     </div>
   );
 }
@@ -124,19 +94,6 @@ function QrCard({
   );
 }
 
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("Impossible de charger le QR code."));
-    img.src = src;
-  });
-}
-
-function slugify(raceName: string): string {
-  return raceName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-}
-
 /**
  * Compose une affiche A4 (fond blanc, QR code en grand, nom de la course,
  * DÉPART/ARRIVÉE, message de rappel) via <canvas>, puis déclenche le
@@ -151,7 +108,12 @@ async function generatePrintPoster({
   raceName: string;
   kind: "start" | "finish";
 }) {
-  const img = await loadImage(png);
+  const img = new Image();
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Impossible de charger le QR code."));
+    img.src = png;
+  });
 
   const width = 1240;
   const height = 1754; // proportions A4 portrait, résolution correcte pour l'impression
@@ -166,6 +128,7 @@ async function generatePrintPoster({
   const labelColor = kind === "start" ? "#6FAE3A" : "#E5484D";
   const label = kind === "start" ? "DÉPART" : "ARRIVÉE";
 
+  // Fond et bordure
   ctx.fillStyle = "#FFFFFF";
   ctx.fillRect(0, 0, width, height);
   ctx.strokeStyle = ink;
@@ -174,14 +137,17 @@ async function generatePrintPoster({
 
   ctx.textAlign = "center";
 
+  // Nom de la course (avec retour à la ligne automatique)
   ctx.fillStyle = ink;
   ctx.font = "bold 60px system-ui, sans-serif";
   wrapCenteredText(ctx, raceName, width / 2, 160, width - 200, 68);
 
+  // Label DÉPART / ARRIVÉE
   ctx.fillStyle = labelColor;
   ctx.font = "bold 150px system-ui, sans-serif";
   ctx.fillText(label, width / 2, 400);
 
+  // QR code
   const qrSize = 760;
   const qrX = (width - qrSize) / 2;
   const qrY = 470;
@@ -189,6 +155,7 @@ async function generatePrintPoster({
   ctx.fillRect(qrX - 20, qrY - 20, qrSize + 40, qrSize + 40);
   ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
 
+  // Pied de page
   ctx.fillStyle = ink;
   ctx.font = "bold 44px system-ui, sans-serif";
   ctx.fillText("TRAIL AC 2000", width / 2, qrY + qrSize + 110);
@@ -199,156 +166,12 @@ async function generatePrintPoster({
   const dataUrl = canvas.toDataURL("image/png");
   const a = document.createElement("a");
   a.href = dataUrl;
-  a.download = `affiche-${kind === "start" ? "depart" : "arrivee"}-${slugify(raceName)}.png`;
+  a.download = `affiche-${kind === "start" ? "depart" : "arrivee"}-${raceName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")}.png`;
   a.click();
 }
 
-/**
- * Compose une seule affiche A4 avec les DEUX QR codes (départ + arrivée).
- * Les deux sections sont symétriques (titre de la course, mention
- * "TRAIL AC 2000 — Merci de laisser en place", puis le QR code) ; seule la
- * section DÉPART ajoute la distance, le dénivelé et la phrase d'explication.
- * Pas de cadre englobant : chaque section peut être découpée séparément
- * si besoin (une affiche par point de contrôle).
- */
-async function generateCombinedPoster({
-  startPng,
-  finishPng,
-  raceName,
-  distanceKm,
-  elevationGainM,
-}: {
-  startPng: string;
-  finishPng: string;
-  raceName: string;
-  distanceKm?: number | null;
-  elevationGainM?: number | null;
-}) {
-  const [startImg, finishImg] = await Promise.all([loadImage(startPng), loadImage(finishPng)]);
-
-  const width = 1240;
-  const height = 1754;
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.fillStyle = "#FFFFFF";
-  ctx.fillRect(0, 0, width, height);
-  ctx.textAlign = "center";
-
-  const qrSize = 360;
-  const centerX = width / 2;
-
-  let y = 80;
-  y = drawCheckpointSection(ctx, {
-    centerX,
-    y,
-    contentWidth: width - 200,
-    raceName,
-    checkpointLabel: "DÉPART",
-    checkpointColor: "#5A9A2E",
-    qrImg: startImg,
-    qrSize,
-    distanceKm,
-    elevationGainM,
-  });
-
-  // Séparateur entre les deux sections
-  y += 30;
-  ctx.strokeStyle = "#DDE3DA";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(140, y);
-  ctx.lineTo(width - 140, y);
-  ctx.stroke();
-  y += 50;
-
-  drawCheckpointSection(ctx, {
-    centerX,
-    y,
-    contentWidth: width - 200,
-    raceName,
-    checkpointLabel: "ARRIVÉE",
-    checkpointColor: "#C23B3B",
-    qrImg: finishImg,
-    qrSize,
-  });
-
-  const dataUrl = canvas.toDataURL("image/png");
-  const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = `affiche-depart-arrivee-${slugify(raceName)}.png`;
-  a.click();
-}
-
-/** Dessine une section complète (titre + marque + QR, +distance/dénivelé pour le départ). Retourne le y final. */
-function drawCheckpointSection(
-  ctx: CanvasRenderingContext2D,
-  opts: {
-    centerX: number;
-    y: number;
-    contentWidth: number;
-    raceName: string;
-    checkpointLabel: string;
-    checkpointColor: string;
-    qrImg: HTMLImageElement;
-    qrSize: number;
-    distanceKm?: number | null;
-    elevationGainM?: number | null;
-  }
-): number {
-  const { centerX, contentWidth, raceName, checkpointLabel, checkpointColor, qrImg, qrSize, distanceKm, elevationGainM } = opts;
-  const ink = "#0B1410";
-  let y = opts.y;
-
-  // Titre de la course
-  ctx.fillStyle = ink;
-  ctx.font = "bold 48px system-ui, sans-serif";
-  y = wrapCenteredText(ctx, raceName, centerX, y + 48, contentWidth, 54);
-
-  // "Parcours chronométré" au-dessus de la marque
-  y += 22;
-  ctx.font = "600 28px system-ui, sans-serif";
-  ctx.fillText("Parcours chronométré", centerX, y);
-
-  // Marque
-  y += 40;
-  ctx.font = "bold 36px system-ui, sans-serif";
-  ctx.fillText("TRAIL AC 2000", centerX, y);
-  y += 20;
-
-  // Distance / dénivelé (départ uniquement)
-  const details: string[] = [];
-  if (distanceKm != null) details.push(`${distanceKm.toFixed(1)} km`);
-  if (elevationGainM != null) details.push(`D+ ${Math.round(elevationGainM)} m`);
-  if (details.length > 0) {
-    y += 26;
-    ctx.font = "32px system-ui, sans-serif";
-    ctx.fillText(details.join("   ·   "), centerX, y);
-  }
-
-  // Point de contrôle
-  y += 46;
-  ctx.fillStyle = checkpointColor;
-  ctx.font = "bold 60px system-ui, sans-serif";
-  ctx.fillText(checkpointLabel, centerX, y);
-  y += 30;
-
-  // QR code
-  ctx.drawImage(qrImg, centerX - qrSize / 2, y, qrSize, qrSize);
-  y += qrSize + 44;
-
-  // "Merci de laisser en place", en gras, sous le QR code
-  ctx.fillStyle = ink;
-  ctx.font = "bold 30px system-ui, sans-serif";
-  ctx.fillText("Merci de laisser en place", centerX, y);
-
-  return y;
-}
-
-/** Retourne la position Y juste après le texte (pour enchaîner d'autres éléments). */
 function wrapCenteredText(
   ctx: CanvasRenderingContext2D,
   text: string,
@@ -356,7 +179,7 @@ function wrapCenteredText(
   y: number,
   maxWidth: number,
   lineHeight: number
-): number {
+) {
   const words = text.split(" ");
   const lines: string[] = [];
   let line = "";
@@ -372,6 +195,6 @@ function wrapCenteredText(
   }
   if (line) lines.push(line);
 
-  lines.forEach((l, i) => ctx.fillText(l, x, y + i * lineHeight));
-  return y + lines.length * lineHeight;
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  lines.forEach((l, i) => ctx.fillText(l, x, startY + i * lineHeight));
 }
