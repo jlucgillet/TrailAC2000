@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { Avatar } from "@/components/ResultsTable";
-import { confirmDialog, notify } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -49,7 +48,7 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
 
   async function handleDelete(participantId: string, name: string) {
     if (
-      !await confirmDialog(
+      !confirm(
         `Supprimer ${name || "ce concurrent"} de cette course ? Son historique de chronométrage pour cette course sera aussi supprimé.`
       )
     ) {
@@ -60,14 +59,14 @@ export function ParticipantsTab({ raceId }: { raceId: string }) {
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      notify(data.error ?? "Erreur lors de la suppression.");
+      alert(data.error ?? "Erreur lors de la suppression.");
       return;
     }
     mutate();
   }
 
   async function handleRemovePhoto(photoId: string, name: string) {
-    if (!await confirmDialog(`Retirer la photo de ${name || "ce concurrent"} ?`)) return;
+    if (!confirm(`Retirer la photo de ${name || "ce concurrent"} ?`)) return;
     await fetch(`/api/admin/photos/${photoId}`, { method: "DELETE" });
     mutate();
   }

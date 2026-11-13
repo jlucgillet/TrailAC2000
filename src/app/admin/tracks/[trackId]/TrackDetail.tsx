@@ -7,7 +7,6 @@ import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
 import { ElevationProfile } from "@/components/ElevationProfile";
 import { parseGpxPoints } from "@/lib/gpx";
-import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -69,7 +68,7 @@ export function TrackDetail({
 
   async function handleReverse() {
     if (
-      !await confirmDialog(
+      !confirm(
         "Inverser le sens de ce parcours ? Le départ et l'arrivée seront échangés et le dénivelé positif recalculé."
       )
     )
@@ -104,7 +103,7 @@ export function TrackDetail({
   }
 
   async function handleDelete() {
-    if (!await confirmDialog(`Supprimer le parcours "${name}" ? Cette action est irréversible.`)) return;
+    if (!confirm(`Supprimer le parcours "${name}" ? Cette action est irréversible.`)) return;
     await fetch(`/api/admin/tracks/${trackId}`, { method: "DELETE" });
     router.push("/admin/tracks");
   }
@@ -307,7 +306,7 @@ function ShareSection({
   }
 
   async function handleRegenerate() {
-    if (!await confirmDialog("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
+    if (!confirm("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
     setRegenerating(true);
     await fetch(`/api/admin/tracks/${trackId}/regenerate-share`, { method: "POST" });
     setRegenerating(false);
