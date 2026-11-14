@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { formatDurationMs } from "@/lib/time";
+import { confirmDialog, notify } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -56,7 +57,7 @@ export function AllAttemptsTab({ raceId }: { raceId: string }) {
 
   async function handleDelete(runId: string, displayName: string, attemptNumber: number) {
     if (
-      !confirm(
+      !await confirmDialog(
         `Supprimer l'essai n°${attemptNumber} de ${displayName} ? Cette action est irréversible.`
       )
     ) {
@@ -69,7 +70,7 @@ export function AllAttemptsTab({ raceId }: { raceId: string }) {
     setDeletingId(null);
     if (!res.ok) {
       const result = await res.json().catch(() => ({}));
-      alert(result.error ?? "Erreur lors de la suppression.");
+      notify(result.error ?? "Erreur lors de la suppression.");
       return;
     }
     mutate();

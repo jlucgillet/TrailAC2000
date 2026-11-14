@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 type Race = {
   id: string;
@@ -66,7 +67,7 @@ export function SettingsTab({
   }
 
   async function handleArchive() {
-    if (!confirm("Archiver cette course ?")) return;
+    if (!await confirmDialog("Archiver cette course ?")) return;
     await fetch(`/api/admin/races/${race.id}`, { method: "DELETE" });
     window.location.href = "/admin/dashboard";
   }

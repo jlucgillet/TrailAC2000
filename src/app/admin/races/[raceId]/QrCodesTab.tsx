@@ -1,6 +1,7 @@
 "use client";
 
 import useSWR from "swr";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -18,7 +19,7 @@ export function QrCodesTab({
   const { data, isLoading, mutate } = useSWR(`/api/admin/races/${raceId}/qrcodes`, fetcher);
 
   async function regenerate(target: "start" | "finish") {
-    if (!confirm("Les QR codes déjà imprimés pour ce point de contrôle ne fonctionneront plus. Continuer ?")) {
+    if (!await confirmDialog("Les QR codes déjà imprimés pour ce point de contrôle ne fonctionneront plus. Continuer ?")) {
       return;
     }
     await fetch(`/api/admin/races/${raceId}/qrcodes`, {

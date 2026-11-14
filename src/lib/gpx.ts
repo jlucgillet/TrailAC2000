@@ -49,47 +49,58 @@ function haversineMeters(a: GpxPoint, b: GpxPoint): number {
 }
 
 /**
- * Distance totale (somme des segments) et dénivelé positif.
+ * Calcul UNIQUE du dénivelé, utilisé partout (import, fiche parcours, outil de
+ * tracé, recalcul) : un même tracé donne donc toujours les mêmes chiffres.
  *
- * Le D+ est calculé par seuil cumulatif (hystérésis) : on garde une altitude
- * de référence et on ne compte une montée que lorsque l'altitude dépasse la
- * référence d'au moins 1 m ; une descente de 1 m ou plus déplace la référence
- * vers le bas. Contrairement à une somme de variations point à point avec
- * seuil, ce calcul ne dépend pas de la densité des points (une trace Garmin
- * à 1 point / 7 m donne le même résultat qu'une trace simplifiée) et filtre
- * le bruit du capteur. Le résultat reste une estimation.
+ * Méthode (seuil cumulatif, ou « hystérésis ») : on garde une altitude de
+ * référence ; dès que l'altitude s'en écarte d'au moins ELEVATION_NOISE_THRESHOLD_M,
+ * l'écart est compté en montée (D+) ou en descente (D−) et la référence est
+ * déplacée. Le résultat ne dépend pas de la densité des points et D+ − D−
+ * est égal à (altitude d'arrivée − altitude de départ) à moins d'un seuil près.
+ *
+ * Le dénivelé reste une estimation : deux logiciels honnêtes peuvent différer
+ * de quelques pour cent selon le capteur et la méthode.
  */
 export const ELEVATION_NOISE_THRESHOLD_M = 1;
+
+export function computeElevationStats(eles: (number | null | undefined)[]): {
+  gain: number;
+  loss: number;
+} {
+  let gain = 0;
+  let loss = 0;
+  let ref: number | null = null;
+  for (const e of eles) {
+    if (e === null || e === undefined || Number.isNaN(e)) continue;
+    if (ref === null) {
+      ref = e;
+      continue;
+    }
+    const delta = e - ref;
+    if (delta >= ELEVATION_NOISE_THRESHOLD_M) {
+      gain += delta;
+      ref = e;
+    } else if (delta <= -ELEVATION_NOISE_THRESHOLD_M) {
+      loss -= delta;
+      ref = e;
+    }
+  }
+  return { gain, loss };
+}
 
 export function computeGpxStats(points: GpxPoint[]): {
   distanceKm: number;
   elevationGainM: number;
+  elevationLossM: number;
 } {
   let distanceM = 0;
-  let elevationGainM = 0;
-  let ref: number | null = null;
-
   for (let i = 1; i < points.length; i++) {
     distanceM += haversineMeters(points[i - 1], points[i]);
   }
-
-  for (const p of points) {
-    if (p.ele === null) continue;
-    if (ref === null) {
-      ref = p.ele;
-      continue;
-    }
-    const delta = p.ele - ref;
-    if (delta >= ELEVATION_NOISE_THRESHOLD_M) {
-      elevationGainM += delta;
-      ref = p.ele;
-    } else if (delta <= -ELEVATION_NOISE_THRESHOLD_M) {
-      ref = p.ele;
-    }
-  }
-
+  const { gain, loss } = computeElevationStats(points.map((p) => p.ele));
   return {
     distanceKm: Math.round((distanceM / 1000) * 100) / 100,
-    elevationGainM: Math.round(elevationGainM),
+    elevationGainM: Math.round(gain),
+    elevationLossM: Math.round(loss),
   };
 }

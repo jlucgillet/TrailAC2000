@@ -17,6 +17,8 @@ type Seg = {
   status: "loading" | "ok" | "fallback";
   /** Tronçon issu du tracé d'origine (mode édition) : sa géométrie exacte est conservée. */
   orig?: boolean;
+  /** Altitudes exactes des points d'origine (même longueur que coords), en mode édition. */
+  ele?: (number | null)[];
 };
 
 /** Parcours existant à modifier. */
@@ -70,37 +72,6 @@ function hav(a: LL, b: LL): number {
   return 2 * R_EARTH * Math.asin(Math.sqrt(h));
 }
 
-/**
- * Allège / densifie un tracé : un point environ tous les `step` mètres
- * (les virages sont conservés, les longs segments droits sont subdivisés).
- */
-function simplifyPath(path: LL[], step: number): LL[] {
-  if (path.length < 2) return path.slice();
-  const out: LL[] = [path[0]];
-  let acc = 0;
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1];
-    const b = path[i];
-    const d = hav(a, b);
-    if (d > step) {
-      const n = Math.floor(d / step);
-      for (let k = 1; k <= n; k++) {
-        const t = k / (n + 1);
-        out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
-      }
-      acc = 0;
-    } else {
-      acc += d;
-      if (acc >= step) {
-        out.push(a);
-        acc = 0;
-      }
-    }
-    if (i === path.length - 1) out.push(b);
-  }
-  return out;
-}
-
 const ELE_KEY = (p: LL) => `${p[0].toFixed(4)},${p[1].toFixed(4)}`;
 
 async function fetchElevBatch(coords: LL[]): Promise<(number | null)[]> {
@@ -130,31 +101,25 @@ async function fetchElevBatch(coords: LL[]): Promise<(number | null)[]> {
   return coords.map(() => null);
 }
 
-/** Moyenne glissante de l'altitude (réduit le bruit / l'effet « marches » du MNT). */
-function smoothEle(eles: (number | null)[], half = 2): (number | null)[] {
-  return eles.map((e, i) => {
-    if (e === null) return null;
+/**
+ * Lisse les altitudes du MNT (±2 échantillons, au sein d'un même tronçon sans
+ * altitude d'origine) : réduit l'effet « marches » de la grille de 30 m.
+ */
+function smoothRuns(vals: (number | null)[], run: number[], half = 2): (number | null)[] {
+  return vals.map((v, k) => {
+    if (v === null) return null;
     let sum = 0;
     let n = 0;
-    for (let k = Math.max(0, i - half); k <= Math.min(eles.length - 1, i + half); k++) {
-      const v = eles[k];
-      if (v !== null) {
-        sum += v;
+    for (let j = Math.max(0, k - half); j <= Math.min(vals.length - 1, k + half); j++) {
+      if (run[j] !== run[k]) continue;
+      const w = vals[j];
+      if (w !== null) {
+        sum += w;
         n++;
       }
     }
-    return Math.round((sum / n) * 10) / 10;
+    return n ? sum / n : null;
   });
-}
-
-function descent(points: { ele: number | null }[]): number {
-  let loss = 0;
-  for (let i = 1; i < points.length; i++) {
-    const a = points[i - 1].ele;
-    const b = points[i].ele;
-    if (a !== null && b !== null && a - b > 1) loss += a - b;
-  }
-  return Math.round(loss);
 }
 
 /** Distance (m) d'un point à un segment [a,b] (projection locale). */
@@ -218,6 +183,7 @@ function buildFromTrack(gpxData: string) {
       coords: coords.slice(idx[k], idx[k + 1] + 1),
       status: "ok",
       orig: true,
+      ele: pts.slice(idx[k], idx[k + 1] + 1).map((p) => p.ele),
     });
   }
   return { wps, segs, nextId: segs.length, orig: pts };
@@ -554,24 +520,51 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
   }, [fs]);
 
   // ---------- Distance, altitude, dénivelé ----------
-  const path = useMemo(() => {
-    const out: LL[] = [];
-    for (const s of data.segs) for (const c of s.coords) out.push(c);
-    return out;
+  // Chemin complet (résolution d'origine, sans simplification) avec, pour chaque
+  // point, son altitude d'origine exacte quand on la connaît. Ailleurs (tracé
+  // dessiné ou recalculé), l'altitude vient du MNT, échantillonné tous les ~30 m
+  // puis interpolée le long du tracé.
+  const prep = useMemo(() => {
+    const P: LL[] = [];
+    const O: (number | null)[] = [];
+    for (const seg of data.segs) {
+      seg.coords.forEach((c, j) => {
+        const exact = seg.orig && seg.ele ? seg.ele[j] ?? null : null;
+        const e = exact !== null ? exact : origEle(c);
+        const last = P[P.length - 1];
+        // Le dernier point d'un tronçon = le premier du suivant : on ne le double pas.
+        if (j === 0 && last && last[0] === c[0] && last[1] === c[1] && O[O.length - 1] === e) return;
+        P.push(c);
+        O.push(e);
+      });
+    }
+    const d = new Float64Array(P.length);
+    for (let i = 1; i < P.length; i++) d[i] = d[i - 1] + hav(P[i - 1], P[i]);
+    const total = P.length ? d[P.length - 1] : 0;
+    const step = Math.max(30, total / 1500);
+    const sIdx: number[] = [];
+    const sRun: number[] = [];
+    let runId = -1;
+    let last = -1;
+    for (let i = 0; i < P.length; i++) {
+      if (O[i] !== null) continue;
+      const runStart = i === 0 || O[i - 1] !== null;
+      const runEnd = i === P.length - 1 || O[i + 1] !== null;
+      if (runStart) runId++;
+      if (runStart || runEnd || last < 0 || d[i] - d[last] >= step) {
+        sIdx.push(i);
+        sRun.push(runId);
+        last = i;
+      }
+    }
+    return { P, O, d, sIdx, sRun };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  const sample = useMemo(() => {
-    if (path.length < 2) return [] as LL[];
-    let total = 0;
-    for (let i = 1; i < path.length; i++) total += hav(path[i - 1], path[i]);
-    const step = Math.max(30, total / 1500);
-    return simplifyPath(path, step);
-  }, [path]);
-
-  const sampleKey = useMemo(() => sample.map(ELE_KEY).join("|"), [sample]);
+  const sampleKey = useMemo(() => prep.sIdx.map((i) => ELE_KEY(prep.P[i])).join("|"), [prep]);
 
   useEffect(() => {
-    if (sample.length < 2) {
+    if (prep.sIdx.length === 0) {
       setEleLoading(false);
       setEleFailed(false);
       return;
@@ -582,9 +575,10 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
     const timer = setTimeout(async () => {
       const missing: LL[] = [];
       const seen = new Set<string>();
-      for (const p of sample) {
+      for (const i of prep.sIdx) {
+        const p = prep.P[i];
         const k = ELE_KEY(p);
-        if (!eleCache.current.has(k) && !seen.has(k) && origEle(p) === null) {
+        if (!eleCache.current.has(k) && !seen.has(k)) {
           seen.add(k);
           missing.push(p);
         }
@@ -610,22 +604,44 @@ export function TrackDrawer({ initial }: { initial?: InitialTrack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sampleKey]);
 
+  // Points définitifs : exactement ceux qui seront enregistrés dans le GPX
+  // (coordonnées à 6 décimales, altitudes du MNT à 0,1 m), pour que les chiffres
+  // affichés ici soient identiques à ceux de la fiche du parcours.
   const points = useMemo(() => {
-    const raw = sample.map((p) => {
-      const o = origEle(p);
-      if (o !== null) return o;
-      const v = eleCache.current.get(ELE_KEY(p));
+    const { P, O, d, sIdx, sRun } = prep;
+    const raw = sIdx.map((i) => {
+      const v = eleCache.current.get(ELE_KEY(P[i]));
       return v === undefined ? null : v;
     });
-    const sm = smoothEle(raw);
-    return sample.map((p, i) => ({ lat: p[0], lon: p[1], ele: sm[i] }));
+    const sm = smoothRuns(raw, sRun);
+    const out: { lat: number; lon: number; ele: number | null }[] = new Array(P.length);
+    let s = 0; // dernier échantillon dont l'indice est <= i
+    for (let i = 0; i < P.length; i++) {
+      let ele: number | null = O[i];
+      if (ele === null) {
+        while (s + 1 < sIdx.length && sIdx[s + 1] <= i) s++;
+        if (sIdx[s] === i) {
+          ele = sm[s];
+        } else if (s + 1 < sIdx.length && sRun[s] === sRun[s + 1]) {
+          const va = sm[s];
+          const vb = sm[s + 1];
+          if (va !== null && vb !== null) {
+            const t = (d[i] - d[sIdx[s]]) / Math.max(1e-9, d[sIdx[s + 1]] - d[sIdx[s]]);
+            ele = va + (vb - va) * t;
+          } else ele = va ?? vb;
+        }
+        if (ele !== null) ele = Math.round(ele * 10) / 10;
+      }
+      out[i] = { lat: Number(P[i][0].toFixed(6)), lon: Number(P[i][1].toFixed(6)), ele };
+    }
+    return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sample, eleTick]);
+  }, [prep, eleTick]);
 
   const stats = useMemo(() => {
     if (points.length < 2) return { distanceKm: 0, up: 0, down: 0 };
     const s = computeGpxStats(points);
-    return { distanceKm: s.distanceKm, up: s.elevationGainM, down: descent(points) };
+    return { distanceKm: s.distanceKm, up: s.elevationGainM, down: s.elevationLossM };
   }, [points]);
 
   const missingEle = points.filter((p) => p.ele === null).length;

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { ResultsTable, type ResultRow, type ResultSortKey } from "@/components/ResultsTable";
 import { EditRunModal } from "./EditRunModal";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -128,7 +129,7 @@ export function ResultsTab({ raceId }: { raceId: string }) {
             {row.photoUrl && (
               <button
                 onClick={async () => {
-                  if (!confirm(`Retirer la photo de ${row.displayName} ?`)) return;
+                  if (!await confirmDialog(`Retirer la photo de ${row.displayName} ?`)) return;
                   await fetch(row.photoUrl!.replace("/api/photos/", "/api/admin/photos/"), {
                     method: "DELETE",
                   });

@@ -14,6 +14,8 @@ export function TracksList() {
   const router = useRouter();
   const { data, isLoading, mutate } = useSWR("/api/admin/tracks", fetcher);
   const [uploading, setUploading] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcMsg, setRecalcMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -38,6 +40,25 @@ export function TracksList() {
       router.push(`/admin/tracks/${result.id}`);
       return;
     }
+    mutate();
+  }
+
+  async function handleRecalcAll() {
+    setRecalcMsg(null);
+    setError(null);
+    setRecalculating(true);
+    const res = await fetch("/api/admin/tracks/recalc-all", { method: "POST" });
+    const result = await res.json().catch(() => ({}));
+    setRecalculating(false);
+    if (!res.ok) {
+      setError(result.error ?? "Erreur lors du recalcul.");
+      return;
+    }
+    setRecalcMsg(
+      `${result.updated} parcours mis à jour, ${result.unchanged} déjà à jour` +
+        (result.skipped ? `, ${result.skipped} sans tracé exploitable` : "") +
+        "."
+    );
     mutate();
   }
 
@@ -77,6 +98,15 @@ export function TracksList() {
           >
             ✏️ Créer en traçant
           </Link>
+          <button
+            type="button"
+            onClick={handleRecalcAll}
+            disabled={recalculating}
+            title="Recalcule distance et D+ de tous les parcours avec la formule actuelle"
+            className="rounded-lg border border-border px-4 py-2 text-sm text-muted hover:text-ink disabled:opacity-50"
+          >
+            {recalculating ? "Calcul…" : "↻ Recalculer les D+"}
+          </button>
           <label className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-bg">
             {uploading ? "Import en cours…" : "+ Nouveau parcours (GPX)"}
             <input
@@ -91,6 +121,7 @@ export function TracksList() {
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
+      {recalcMsg && <p className="text-sm text-muted">{recalcMsg}</p>}
 
       {tracks.length > 0 && (
         <div>

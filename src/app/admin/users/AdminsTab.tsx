@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
+import { confirmDialog, notify } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -45,11 +46,11 @@ export function AdminsTab() {
   }
 
   async function handleDelete(id: string, adminEmail: string) {
-    if (!confirm(`Supprimer le compte administrateur ${adminEmail} ?`)) return;
+    if (!await confirmDialog(`Supprimer le compte administrateur ${adminEmail} ?`)) return;
     const res = await fetch(`/api/admin/users/admins/${id}`, { method: "DELETE" });
     const result = await res.json();
     if (!res.ok) {
-      alert(result.error ?? "Erreur lors de la suppression.");
+      notify(result.error ?? "Erreur lors de la suppression.");
       return;
     }
     mutate();

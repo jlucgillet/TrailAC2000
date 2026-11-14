@@ -4,6 +4,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
 import { parseGpxPoints } from "@/lib/gpx";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -59,7 +60,7 @@ export function ParcoursTab({ raceId }: { raceId: string }) {
   }
 
   async function handleRemove() {
-    if (!confirm("Supprimer le tracé GPX de cette course ?")) return;
+    if (!await confirmDialog("Supprimer le tracé GPX de cette course ?")) return;
     await fetch(`/api/admin/races/${raceId}/gpx`, { method: "DELETE" });
     mutate();
   }
@@ -216,7 +217,7 @@ function ShareSection({
   }
 
   async function handleRegenerate() {
-    if (!confirm("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
+    if (!await confirmDialog("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
     setRegenerating(true);
     await fetch(`/api/admin/races/${raceId}/gpx/regenerate-share`, { method: "POST" });
     setRegenerating(false);

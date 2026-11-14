@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { Avatar } from "@/components/ResultsTable";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -35,7 +36,7 @@ export function GlobalParticipantsTab() {
   }
 
   async function handleRemove(raceId: string, participantId: string, name: string) {
-    if (!confirm(`Retirer ${name} de cette course ? Son historique de chronométrage sera supprimé.`)) {
+    if (!await confirmDialog(`Retirer ${name} de cette course ? Son historique de chronométrage sera supprimé.`)) {
       return;
     }
     await fetch(`/api/admin/races/${raceId}/participants/${participantId}`, { method: "DELETE" });
@@ -43,7 +44,7 @@ export function GlobalParticipantsTab() {
   }
 
   async function handleRemovePhoto(photoId: string, name: string) {
-    if (!confirm(`Supprimer la photo de profil de ${name} ?`)) return;
+    if (!await confirmDialog(`Supprimer la photo de profil de ${name} ?`)) return;
     await fetch(`/api/admin/photos/${photoId}`, { method: "DELETE" });
     mutate();
   }

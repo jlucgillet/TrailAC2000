@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 function toLocalInputValue(iso: string | null | undefined): string {
   if (!iso) return "";
@@ -62,7 +63,7 @@ export function EditRunModal({
   }
 
   async function handleDelete() {
-    if (!confirm(`Supprimer le résultat de ${displayName} ? Il redeviendra "Inscrit".`)) return;
+    if (!await confirmDialog(`Supprimer le résultat de ${displayName} ? Il redeviendra "Inscrit".`)) return;
     setSaving(true);
     setError(null);
     const res = await fetch(

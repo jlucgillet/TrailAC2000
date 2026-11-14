@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { GpxMap } from "@/components/GpxMap";
 import { ElevationProfile } from "@/components/ElevationProfile";
-import { parseGpxPoints } from "@/lib/gpx";
+import { computeGpxStats, parseGpxPoints } from "@/lib/gpx";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -68,7 +69,7 @@ export function TrackDetail({
 
   async function handleReverse() {
     if (
-      !confirm(
+      !await confirmDialog(
         "Inverser le sens de ce parcours ? Le départ et l'arrivée seront échangés et le dénivelé positif recalculé."
       )
     )
@@ -103,7 +104,7 @@ export function TrackDetail({
   }
 
   async function handleDelete() {
-    if (!confirm(`Supprimer le parcours "${name}" ? Cette action est irréversible.`)) return;
+    if (!await confirmDialog(`Supprimer le parcours "${name}" ? Cette action est irréversible.`)) return;
     await fetch(`/api/admin/tracks/${trackId}`, { method: "DELETE" });
     router.push("/admin/tracks");
   }
@@ -114,10 +115,13 @@ export function TrackDetail({
     () => points.map((p) => ({ lat: p.lat, lon: p.lon, ele: p.ele })),
     [points]
   );
-  // Reflète la dernière version importée (data) une fois chargée ; les
-  // valeurs initiales (props) ne servent qu'au tout premier rendu.
-  const currentDistanceKm = data?.distanceKm ?? distanceKm;
-  const currentElevationGainM = data?.elevationGainM ?? elevationGainM;
+  // Chiffres calculés à partir du tracé affiché, avec le même calcul que
+  // l'outil « Modifier le tracé » : les deux écrans donnent toujours le même
+  // résultat. Les valeurs enregistrées ne servent que tant que le GPX charge.
+  const live = useMemo(() => (points.length > 1 ? computeGpxStats(points) : null), [points]);
+  const currentDistanceKm = live?.distanceKm ?? data?.distanceKm ?? distanceKm;
+  const currentElevationGainM = live?.elevationGainM ?? data?.elevationGainM ?? elevationGainM;
+  const currentElevationLossM = live?.elevationLossM ?? null;
 
   return (
     <div className="flex flex-col gap-8">
@@ -145,17 +149,23 @@ export function TrackDetail({
       </form>
       {saved && <p className="text-sm text-accent">Nom mis à jour.</p>}
 
-      <div className="grid max-w-md grid-cols-2 gap-4">
+      <div className="grid max-w-xl grid-cols-3 gap-4">
         <div className="rounded-xl border border-border bg-surface p-5">
           <p className="text-sm text-muted">Distance</p>
           <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
-            {currentDistanceKm.toFixed(1)} km
+            {currentDistanceKm.toFixed(2)} km
           </p>
         </div>
         <div className="rounded-xl border border-border bg-surface p-5">
           <p className="text-sm text-muted">Dénivelé positif</p>
           <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
             {Math.round(currentElevationGainM)} m
+          </p>
+        </div>
+        <div className="rounded-xl border border-border bg-surface p-5">
+          <p className="text-sm text-muted">Dénivelé négatif</p>
+          <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
+            {currentElevationLossM === null ? "…" : `${currentElevationLossM} m`}
           </p>
         </div>
       </div>
@@ -306,7 +316,7 @@ function ShareSection({
   }
 
   async function handleRegenerate() {
-    if (!confirm("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
+    if (!await confirmDialog("Générer un nouveau lien ? L'ancien lien cessera de fonctionner immédiatement.")) return;
     setRegenerating(true);
     await fetch(`/api/admin/tracks/${trackId}/regenerate-share`, { method: "POST" });
     setRegenerating(false);
