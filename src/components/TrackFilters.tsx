@@ -3,9 +3,15 @@
 import { useMemo, useState } from "react";
 
 type FilterableTrack = {
+  name?: string | null;
   distanceKm: number | null;
   elevationGainM: number | null;
 };
+
+/** Minuscules sans accents, pour une recherche tolérante (« Besançon » = « besancon »). */
+function norm(v: string): string {
+  return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
 
 /** Curseur à deux poignées (min / max). */
 function RangeFilter({
@@ -104,6 +110,11 @@ export function useTrackFilters<T extends FilterableTrack>(
   const eleFull = ele[0] === bounds.eMin && ele[1] === bounds.eMax;
   const filtering = !distFull || !eleFull;
 
+  // Recherche par nom : tous les mots saisis doivent apparaître dans le nom.
+  const [query, setQuery] = useState("");
+  const words = norm(query).split(/\s+/).filter(Boolean);
+  const searching = words.length > 0;
+
   // Tri : par défaut distance croissante, puis dénivelé croissant.
   const [sortKey, setSortKey] = useState<"dist" | "ele">("dist");
   const [sortDesc, setSortDesc] = useState(false);
@@ -113,7 +124,8 @@ export function useTrackFilters<T extends FilterableTrack>(
       distFull || (t.distanceKm != null && t.distanceKm >= dist[0] - 0.5 && t.distanceKm <= dist[1] + 0.5);
     const okE =
       eleFull || (t.elevationGainM != null && t.elevationGainM >= ele[0] && t.elevationGainM <= ele[1]);
-    return okD && okE;
+    const okN = !searching || words.every((w) => norm(t.name ?? "").includes(w));
+    return okD && okE && okN;
   });
 
   const filtered = useMemo(() => {
@@ -183,12 +195,29 @@ export function useTrackFilters<T extends FilterableTrack>(
   const reset = () => {
     setDistSel(null);
     setEleSel(null);
+    setQuery("");
   };
+
+  const anyFilter = filtering || searching;
+
+  const searchControl = showSort ? (
+    <div className="relative">
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="🔍 Rechercher un parcours…"
+        aria-label="Rechercher un parcours par nom"
+        className="w-52 rounded-full border border-border bg-surface px-3 py-1 text-xs text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+      />
+    </div>
+  ) : null;
 
   const panel = !showFilters && !showSort ? null : discreet ? (
     <div className="mb-4">
       {styles}
       <div className="flex flex-wrap items-center gap-3 text-sm">
+        {searchControl}
         {showFilters && (
         <button
           type="button"
@@ -207,7 +236,7 @@ export function useTrackFilters<T extends FilterableTrack>(
         </button>
         )}
         {sortControl}
-        {filtering && (
+        {anyFilter && (
           <>
             <span className="text-xs text-muted">
               {filtered.length} sur {tracks.length}
@@ -223,13 +252,14 @@ export function useTrackFilters<T extends FilterableTrack>(
   ) : (
     <div className="mb-6 flex flex-col gap-4 rounded-xl border border-border bg-surface p-4">
       {styles}
+      {searchControl}
       {sliders}
       {sortControl}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted">
           {filtered.length} parcours sur {tracks.length}
         </span>
-        {filtering && (
+        {anyFilter && (
           <button type="button" onClick={reset} className="text-accent underline">
             Réinitialiser
           </button>
