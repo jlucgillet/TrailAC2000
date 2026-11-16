@@ -368,7 +368,17 @@ export function GpxMap({
       // Sur mobile (écran tactile), le pincement suffit : pas de boutons + / −.
       const isTouch =
         typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
-      const map = L.map(containerRef.current, { zoomControl: !isTouch });
+      const map = L.map(containerRef.current, { zoomControl: !isTouch, attributionControl: false });
+      // Mention de licence discrète : sans « Leaflet », en tout petit.
+      L.control.attribution({ prefix: false }).addTo(map);
+      if (!document.getElementById("app-attribution-style")) {
+        const st = document.createElement("style");
+        st.id = "app-attribution-style";
+        st.textContent =
+          ".leaflet-container .leaflet-control-attribution{font-size:8px;line-height:1.2;padding:0 3px;background:rgba(255,255,255,.55);color:#444;box-shadow:none;opacity:.8}" +
+          ".leaflet-container .leaflet-control-attribution a{color:inherit}";
+        document.head.appendChild(st);
+      }
       mapRef.current = map;
 
       const base = BASEMAPS[basemap];
