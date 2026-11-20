@@ -116,7 +116,10 @@ patch("api/athlete/name : met à jour la fiche membre", "src/app/api/athlete/nam
   });
 
 ${marker}`);
-  return s.replace(/(import \{ z \} from "zod";\n)/, `$1import { prisma } from "@/lib/db";\n`);
+  if (!/import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["']@\/lib\/db["']/.test(s)) {
+    s = s.replace(/(import \{ z \} from "zod";\n)/, `$1import { prisma } from "@/lib/db";\n`);
+  }
+  return s;
 });
 
 // 5. Admin : onglet Membres
@@ -150,6 +153,121 @@ patch("login : suppression des champs prénom/nom", "src/app/mon-espace/login/pa
   s = s.replace(/\n\s*const \[firstName, setFirstName\] = useState\(""\);/, "").replace(/\n\s*const \[lastName, setLastName\] = useState\(""\);/, "");
   return s;
 });
+
+// 7b. Guides : mise à jour (membres, trombinoscope)
+patch("guide gestionnaire : section Membres", "src/app/guide/organisateur/page.tsx", (s) => {
+  if (s.includes('id="membres"')) return "SKIP";
+  const navA = '["utilisateurs", "Utilisateurs"],';
+  const secA = '<Section id="utilisateurs" title="7. Utilisateurs">';
+  if (!s.includes(navA) || !s.includes(secA)) return null;
+  s = s.replace(navA, '["membres", "Membres"],\n          ' + navA);
+  const membres = `<Section id="membres" title="7. Membres du club">
+        <p>
+          Les <b>membres</b> forment la liste des personnes autorisées à entrer dans l&rsquo;espace
+          membre. Un membre peut participer ou non à une course chronométrée ; il a accès aux
+          parcours, à son profil et au trombinoscope dans tous les cas.
+        </p>
+        <p>
+          Menu <b>Utilisateurs → Membres</b> :
+        </p>
+        <ul>
+          <li>
+            <b>+ Ajouter un membre</b> : prénom, nom et téléphone (le téléphone est l&rsquo;identifiant).
+          </li>
+          <li>
+            <b>Importer un CSV</b> : colonnes Prénom;Nom;Téléphone (séparateur ; , ou tabulation). Un
+            numéro déjà présent est mis à jour, les nouveaux sont ajoutés, les lignes invalides sont
+            listées sans bloquer le reste.
+          </li>
+          <li>
+            <b>Exporter</b> : télécharge la liste en CSV (ouvrable dans Excel).
+          </li>
+          <li>
+            ✏️ modifie un membre (changer le téléphone met aussi à jour sa photo et ses
+            participations) ; 🗑️ le retire de la liste : il ne peut plus se connecter, sa photo est
+            supprimée, ses résultats sont conservés.
+          </li>
+        </ul>
+        <p>
+          Seul un numéro présent dans la liste permet de se connecter. Un membre inconnu voit un
+          message lui demandant de contacter un responsable du club. Le chronométrage par simple scan
+          (sans connexion) reste ouvert à tous, membre ou non.
+        </p>
+        <p>
+          Le <b>trombinoscope</b> (prénom, nom, photo) est visible par tous les membres connectés.
+          Une photo que le membre n&rsquo;a pas choisi de partager est remplacée par ses initiales ;
+          les téléphones ne sont jamais affichés.
+        </p>
+      </Section>
+
+      `;
+  s = s.replace(secA, membres + '<Section id="utilisateurs" title="8. Utilisateurs">');
+  s = s.replace(/<b>Concurrents<\/b> : vue de tous les concurrents/, "<b>Participants</b> : vue de tous les participants");
+  s = s.replace("<b>Utilisateurs → Concurrents</b>", "<b>Utilisateurs → Membres</b>");
+  s = s.replace("Les concurrents peuvent ajouter une photo depuis <b>Mon espace → Profil</b>. Elle apparaît", "Les membres peuvent ajouter une photo depuis <b>Mon espace → Profil</b>. Elle apparaît dans le trombinoscope (si le membre la partage) et");
+  return s;
+});
+
+patch("guide membre : connexion et trombinoscope", "src/app/guide/concurrent/page.tsx", (s) => {
+  if (s.includes('id="trombinoscope"')) return "SKIP";
+  const capA = "Le menu\n                te donne accès à <b className=\"text-ink\">Courses, Parcours, Guide</b> et Déconnexion.";
+  const confA = '<p className="mt-10 rounded-xl border border-border bg-surface p-4 text-sm text-muted">\n        <b className="text-ink">Confidentialité :</b>';
+  const introA = 'pour retrouver l&rsquo;historique de toutes tes courses.';
+  if (!s.includes(confA) || !s.includes(capA)) return null;
+  s = s.replace(capA, "Le menu\n                te donne accès à <b className=\"text-ink\">Courses, Parcours, Trombinoscope, Profil, Guide</b> et Déconnexion.");
+  if (s.includes(introA)) s = s.replace(introA, introA + " L&rsquo;espace membre est réservé aux membres du club (ton numéro doit figurer dans la liste tenue par le club) ; tu y retrouves aussi le <a href=\"#trombinoscope\" className=\"text-accent underline\">trombinoscope</a>.");
+  const section = `<section id="trombinoscope" className="mt-16 scroll-mt-8">
+        <span className="mb-2 inline-block rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
+          Membres
+        </span>
+        <h2 className="mb-1 font-display text-2xl font-semibold">Profil et trombinoscope</h2>
+        <p className="mb-6 text-muted">
+          La liste des membres est tenue à jour par les responsables du club.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">🔐 Connexion</p>
+            <p className="text-sm text-muted">
+              Saisis ton numéro de téléphone sur la page d&rsquo;accueil → « Espace membre ». Si ton
+              numéro n&rsquo;est pas reconnu, contacte un responsable du club pour être ajouté ou
+              corriger ton numéro.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">👤 Ma photo</p>
+            <p className="text-sm text-muted">
+              Dans <b className="text-ink">Profil</b>, ajoute ta photo. Elle n&rsquo;apparaît dans le
+              trombinoscope que si <b className="text-ink">« Partager ma photo »</b> est activé ;
+              sinon les autres voient tes initiales.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5 sm:col-span-2">
+            <p className="mb-1 font-medium">🧑‍🤝‍🧑 Trombinoscope</p>
+            <p className="text-sm text-muted">
+              Menu <b className="text-ink">Trombinoscope</b> : tous les membres avec photo, prénom et
+              nom. Utilise la recherche pour retrouver quelqu&rsquo;un, touche une photo pour
+              l&rsquo;agrandir. Les numéros de téléphone ne sont jamais affichés.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      `;
+  return s.replace(confA, section + confA);
+});
+
+// 7c. Intitulés « Guide concurrent » → « Guide membre » (le paramètre ?espace=concurrent reste inchangé)
+for (const [file, pairs] of [
+  ["src/app/guide/page.tsx", [['"Guide concurrent"', '"Guide membre"'], ["résultats, photos et statistiques", "résultats, membres, photos et statistiques"]]],
+  ["src/app/guide/concurrent/page.tsx", [[">Guide concurrent</p>", ">Guide membre</p>"]]],
+  ["src/app/guide/installation/page.tsx", [[">Guide concurrent</p>", ">Guide membre</p>"]]],
+]) {
+  patch("intitulé guide : " + file.split("/").slice(-2).join("/"), file, (s) => {
+    let o = s, changed = false;
+    for (const [a, b] of pairs) if (o.includes(a)) { o = o.split(a).join(b); changed = true; }
+    return changed ? o : "SKIP";
+  });
+}
 
 // 8. Renommage « espace concurrent » → « espace membre » (textes uniquement)
 const RENAMES = [

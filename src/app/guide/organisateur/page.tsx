@@ -51,6 +51,7 @@ export default function OrganisateurGuidePage() {
           ["parcours", "Parcours"],
           ["photos", "Photos"],
           ["stats", "Statistiques"],
+          ["membres", "Membres"],
           ["utilisateurs", "Utilisateurs"],
         ].map(([id, label]) => (
           <a
@@ -172,7 +173,7 @@ export default function OrganisateurGuidePage() {
 
       <Section id="photos" title="5. Photos de profil">
         <p>
-          Les concurrents peuvent ajouter une photo depuis <b>Mon espace → Profil</b>. Elle apparaît
+          Les membres peuvent ajouter une photo depuis <b>Mon espace → Profil</b>. Elle apparaît dans le trombinoscope (si le membre la partage) et
           dans les listes (résultats, concurrents) pour les concurrents connectés et pour toi, jamais
           sur les pages publiques. Tu vois aussi les photos que leur propriétaire a choisi de ne pas
           partager.
@@ -180,7 +181,7 @@ export default function OrganisateurGuidePage() {
         <p>
           Pour une photo inappropriée : bouton <b>Retirer la photo</b> dans l&rsquo;onglet{" "}
           <b>Concurrents</b> ou <b>Résultats</b> d&rsquo;une course, ou dans{" "}
-          <b>Utilisateurs → Concurrents</b>. Le concurrent peut en remettre une autre.
+          <b>Utilisateurs → Membres</b>. Le concurrent peut en remettre une autre.
         </p>
       </Section>
 
@@ -199,13 +200,52 @@ export default function OrganisateurGuidePage() {
         </ul>
       </Section>
 
-      <Section id="utilisateurs" title="7. Utilisateurs">
+      <Section id="membres" title="7. Membres du club">
+        <p>
+          Les <b>membres</b> forment la liste des personnes autorisées à entrer dans l&rsquo;espace
+          membre. Un membre peut participer ou non à une course chronométrée ; il a accès aux
+          parcours, à son profil et au trombinoscope dans tous les cas.
+        </p>
+        <p>
+          Menu <b>Utilisateurs → Membres</b> :
+        </p>
+        <ul>
+          <li>
+            <b>+ Ajouter un membre</b> : prénom, nom et téléphone (le téléphone est l&rsquo;identifiant).
+          </li>
+          <li>
+            <b>Importer un CSV</b> : colonnes Prénom;Nom;Téléphone (séparateur ; , ou tabulation). Un
+            numéro déjà présent est mis à jour, les nouveaux sont ajoutés, les lignes invalides sont
+            listées sans bloquer le reste.
+          </li>
+          <li>
+            <b>Exporter</b> : télécharge la liste en CSV (ouvrable dans Excel).
+          </li>
+          <li>
+            ✏️ modifie un membre (changer le téléphone met aussi à jour sa photo et ses
+            participations) ; 🗑️ le retire de la liste : il ne peut plus se connecter, sa photo est
+            supprimée, ses résultats sont conservés.
+          </li>
+        </ul>
+        <p>
+          Seul un numéro présent dans la liste permet de se connecter. Un membre inconnu voit un
+          message lui demandant de contacter un responsable du club. Le chronométrage par simple scan
+          (sans connexion) reste ouvert à tous, membre ou non.
+        </p>
+        <p>
+          Le <b>trombinoscope</b> (prénom, nom, photo) est visible par tous les membres connectés.
+          Une photo que le membre n&rsquo;a pas choisi de partager est remplacée par ses initiales ;
+          les téléphones ne sont jamais affichés.
+        </p>
+      </Section>
+
+      <Section id="utilisateurs" title="8. Utilisateurs">
         <ul>
           <li>
             <b>Administrateurs</b> : gère qui a accès à l&rsquo;administration.
           </li>
           <li>
-            <b>Concurrents</b> : vue de tous les concurrents de toutes les courses, avec recherche et
+            <b>Participants</b> : vue de tous les participants de toutes les courses, avec recherche et
             filtre par course. Le dossard et la catégorie se modifient dans l&rsquo;onglet
             Concurrents de la course.
           </li>

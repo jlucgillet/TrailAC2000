@@ -26,7 +26,7 @@ export default function GuideIndexPage({
         </Link>
       </div>
       <h1 className="mb-2 font-display text-4xl font-semibold">
-        {espace === "organisateur" ? "Guide gestionnaire" : espace === "concurrent" ? "Guide concurrent" : "Guides"}
+        {espace === "organisateur" ? "Guide gestionnaire" : espace === "concurrent" ? "Guide membre" : "Guides"}
       </h1>
       <p className="mb-10 text-muted">Tout ce qu&rsquo;il faut savoir pour utiliser Trail AC2000.</p>
 
@@ -58,7 +58,7 @@ export default function GuideIndexPage({
           className="rounded-2xl border border-border bg-surface px-6 py-5 transition-colors hover:border-muted"
         >
           <span className="block font-display text-xl font-semibold">Guide gestionnaire</span>
-          <span className="block text-sm text-muted">Courses, parcours, résultats, photos et statistiques</span>
+          <span className="block text-sm text-muted">Courses, parcours, résultats, membres, photos et statistiques</span>
         </Link>
         )}
       </div>

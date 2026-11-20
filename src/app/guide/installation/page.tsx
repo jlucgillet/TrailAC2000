@@ -16,7 +16,7 @@ export default function InstallationGuidePage() {
         </Link>
       </div>
 
-      <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-accent">Guide concurrent</p>
+      <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-accent">Guide membre</p>
       <h1 className="mb-3 font-display text-4xl font-semibold">Installer l&rsquo;app sur ton téléphone</h1>
       <p className="mb-14 max-w-xl text-muted">
         Trail AC2000 s&rsquo;installe directement depuis le site, sans passer par un store

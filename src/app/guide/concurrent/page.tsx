@@ -16,12 +16,12 @@ export default function ConcurrentGuidePage() {
         </Link>
       </div>
 
-      <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-accent">Guide concurrent</p>
+      <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-accent">Guide membre</p>
       <h1 className="mb-3 font-display text-4xl font-semibold">Comment utiliser Trail AC2000</h1>
       <p className="mb-14 max-w-xl text-muted">
         Deux façons de chronométrer ta course : en scannant simplement les QR codes sur place
         (aucune connexion nécessaire), ou via ton espace personnel &laquo;&nbsp;Mon Espace&nbsp;&raquo;
-        pour retrouver l&rsquo;historique de toutes tes courses. Tu peux aussi consulter les{" "}
+        pour retrouver l&rsquo;historique de toutes tes courses. L&rsquo;espace membre est réservé aux membres du club (ton numéro doit figurer dans la liste tenue par le club) ; tu y retrouves aussi le <a href="#trombinoscope" className="text-accent underline">trombinoscope</a>. Tu peux aussi consulter les{" "}
         <a href="#parcours" className="text-accent underline">parcours</a> et les suivre en direct
         avec le GPS de ton téléphone.
       </p>
@@ -162,7 +162,7 @@ export default function ConcurrentGuidePage() {
             caption={
               <>
                 Tu vois <b className="text-ink">toutes tes courses</b> et tes meilleurs temps. Le menu
-                te donne accès à <b className="text-ink">Courses, Parcours, Guide</b> et Déconnexion.
+                te donne accès à <b className="text-ink">Courses, Parcours, Trombinoscope, Profil, Guide</b> et Déconnexion.
               </>
             }
           >
@@ -431,6 +431,42 @@ export default function ConcurrentGuidePage() {
             <p className="text-sm text-muted">
               Tant qu&rsquo;une course est active, tu peux la recourir autant de fois que tu veux pour
               progresser — chaque essai est enregistré séparément.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section id="trombinoscope" className="mt-16 scroll-mt-8">
+        <span className="mb-2 inline-block rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold text-accent">
+          Membres
+        </span>
+        <h2 className="mb-1 font-display text-2xl font-semibold">Profil et trombinoscope</h2>
+        <p className="mb-6 text-muted">
+          La liste des membres est tenue à jour par les responsables du club.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">🔐 Connexion</p>
+            <p className="text-sm text-muted">
+              Saisis ton numéro de téléphone sur la page d&rsquo;accueil → « Espace membre ». Si ton
+              numéro n&rsquo;est pas reconnu, contacte un responsable du club pour être ajouté ou
+              corriger ton numéro.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5">
+            <p className="mb-1 font-medium">👤 Ma photo</p>
+            <p className="text-sm text-muted">
+              Dans <b className="text-ink">Profil</b>, ajoute ta photo. Elle n&rsquo;apparaît dans le
+              trombinoscope que si <b className="text-ink">« Partager ma photo »</b> est activé ;
+              sinon les autres voient tes initiales.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-surface p-5 sm:col-span-2">
+            <p className="mb-1 font-medium">🧑‍🤝‍🧑 Trombinoscope</p>
+            <p className="text-sm text-muted">
+              Menu <b className="text-ink">Trombinoscope</b> : tous les membres avec photo, prénom et
+              nom. Utilise la recherche pour retrouver quelqu&rsquo;un, touche une photo pour
+              l&rsquo;agrandir. Les numéros de téléphone ne sont jamais affichés.
             </p>
           </div>
         </div>
