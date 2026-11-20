@@ -13,7 +13,14 @@ const barlowCondensed = Barlow_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: "Trail AC2000 — Chronométrage",
+  title: "Trail AC2000",
+  openGraph: {
+    title: "Trail AC2000",
+    description: "Trail AC2000 - Parcours trail et chronométrage",
+    siteName: "Trail AC2000",
+    type: "website",
+    locale: "fr_FR",
+  },
   description: "Trail AC2000 - Parcours trail et chronométrage",
   manifest: "/manifest.json",
 };
