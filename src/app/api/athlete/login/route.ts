@@ -30,28 +30,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: normalized.error }, { status: 400 });
   }
 
-  let firstName = parsed.data.firstName;
-  let lastName = parsed.data.lastName;
-
-  if (!firstName && !lastName) {
-    const known = await prisma.participant.findFirst({
-      where: {
-        phoneNormalized: normalized.value,
-        OR: [{ firstName: { not: null } }, { lastName: { not: null } }],
+  const member = await prisma.member.findUnique({
+    where: { phoneNormalized: normalized.value },
+  });
+  if (!member) {
+    return NextResponse.json(
+      {
+        error:
+          "Ce numéro n'est pas dans la liste des membres du club. Contacte un responsable du club pour être ajouté.",
       },
-      orderBy: { createdAt: "desc" },
-    });
-    if (known) {
-      firstName = known.firstName ?? undefined;
-      lastName = known.lastName ?? undefined;
-    }
+      { status: 403 }
+    );
   }
 
-  // Se connecter à Mon Espace repart d'une identité propre : toute session
-  // "scan classique" laissée par une autre personne sur cet appareil est
-  // effacée, pour ne jamais mélanger les deux identités.
-  clearParticipantSession();
-
-  await createAthleteSession({ phoneNormalized: normalized.value, firstName, lastName });
+  await createAthleteSession({
+    phoneNormalized: member.phoneNormalized,
+    firstName: member.firstName || undefined,
+    lastName: member.lastName || undefined,
+  });
   return NextResponse.json({ ok: true });
 }

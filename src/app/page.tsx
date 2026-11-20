@@ -19,7 +19,7 @@ export default function HomePage() {
           >
             <span>
               <span className="block font-display text-xl font-semibold text-ink">
-                Espace concurrent
+                Espace membre
               </span>
               <span className="block text-sm text-muted">
                 Vos courses, vos temps, rejoindre une course active

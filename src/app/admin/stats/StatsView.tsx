@@ -82,7 +82,7 @@ export function StatsView() {
                 <th className="px-4 py-3 font-medium">Personnes</th>
                 <th className="px-4 py-3 font-medium">7 j</th>
                 <th className="px-4 py-3 font-medium">30 j</th>
-                <th className="px-4 py-3 font-medium">Espace concurrent</th>
+                <th className="px-4 py-3 font-medium">Espace membre</th>
                 <th className="px-4 py-3 font-medium">Lien partagé</th>
                 <th className="px-4 py-3 font-medium">Dernier suivi</th>
               </tr>

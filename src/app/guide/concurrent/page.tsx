@@ -142,7 +142,7 @@ export default function ConcurrentGuidePage() {
             number={1}
             caption={
               <>
-                Va sur la page d&rsquo;accueil du site → <b className="text-ink">« Espace concurrent »</b>{" "}
+                Va sur la page d&rsquo;accueil du site → <b className="text-ink">« Espace membre »</b>{" "}
                 → saisis ton téléphone.
               </>
             }

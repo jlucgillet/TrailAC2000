@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { prisma } from "@/lib/db";
 
 const secretKey = () => {
   const secret = process.env.SESSION_SECRET;
@@ -103,7 +104,7 @@ export function clearAdminSession() {
   cookies().delete(ADMIN_COOKIE);
 }
 
-// --- Session "espace concurrent" (persistante, multi-courses) -------------
+// --- Session "espace membre" (persistante, multi-courses) -------------
 // Contrairement à la session participant ci-dessus (liée à UNE course,
 // posée après un scan), cette session sert à un espace où le concurrent
 // consulte l'historique de toutes ses courses et peut en rejoindre de
@@ -134,12 +135,24 @@ export async function createAthleteSession(payload: AthleteSessionPayload) {
 export async function getAthleteSession(): Promise<AthleteSessionPayload | null> {
   const token = cookies().get(ATHLETE_COOKIE)?.value;
   if (!token) return null;
+  let payload: AthleteSessionPayload;
   try {
-    const { payload } = await jwtVerify(token, secretKey());
-    return payload as unknown as AthleteSessionPayload;
+    const verified = await jwtVerify(token, secretKey());
+    payload = verified.payload as unknown as AthleteSessionPayload;
   } catch {
     return null;
   }
+  // Seuls les membres de la liste du club ont accès (un membre retiré perd
+  // l'accès immédiatement). Le nom affiché vient toujours de la fiche membre.
+  const member = await prisma.member.findUnique({
+    where: { phoneNormalized: payload.phoneNormalized },
+  });
+  if (!member) return null;
+  return {
+    ...payload,
+    firstName: member.firstName || undefined,
+    lastName: member.lastName || undefined,
+  };
 }
 
 export function clearAthleteSession() {

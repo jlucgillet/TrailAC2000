@@ -71,7 +71,7 @@ export default function OrganisateurGuidePage() {
           </li>
           <li>
             Onglet <b>Réglages</b> : nom, date, lieu. Choisis si les résultats sont publics et si la
-            course apparaît dans l&rsquo;espace concurrent.
+            course apparaît dans l&rsquo;espace membre.
           </li>
           <li>
             Onglet <b>Parcours</b> : importe le fichier GPX de la course (distance et dénivelé sont
@@ -159,7 +159,7 @@ export default function OrganisateurGuidePage() {
             sens</b> (départ et arrivée échangés, D+ recalculé) ou supprimer.
           </li>
           <li>
-            <b>Espace concurrent</b> : coche pour que le parcours soit visible des concurrents
+            <b>Espace membre</b> : coche pour que le parcours soit visible des concurrents
             connectés (carte, téléchargement GPX, suivi GPS).
           </li>
           <li>
@@ -191,7 +191,7 @@ export default function OrganisateurGuidePage() {
         </p>
         <ul>
           <li>Compteurs : total, personnes distinctes, 7 et 30 derniers jours.</li>
-          <li>Courbe des 30 derniers jours et tableau par parcours (espace concurrent / lien partagé).</li>
+          <li>Courbe des 30 derniers jours et tableau par parcours (espace membre / lien partagé).</li>
           <li>
             Un redémarrage dans les 10 minutes par la même personne n&rsquo;est pas recompté. Rien
             de personnel n&rsquo;est enregistré (ni nom, ni téléphone, ni position).

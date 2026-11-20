@@ -12,7 +12,7 @@ const bodySchema = z.object({
 });
 
 /**
- * Traite un scan effectué via la caméra intégrée à l'espace concurrent,
+ * Traite un scan effectué via la caméra intégrée à l'espace membre,
  * pour une course choisie à l'avance (contrairement à /api/athlete/scan-any,
  * qui accepte n'importe quelle course). Vérifie que le QR scanné correspond
  * bien à la course choisie.

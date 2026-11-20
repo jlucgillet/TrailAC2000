@@ -4,7 +4,7 @@ import { getAthleteSession } from "@/lib/session";
 
 /**
  * Parcours de la bibliothèque (model Track — pas les courses) consultables
- * depuis l'espace concurrent. Toute la bibliothèque est accessible à tout
+ * depuis l'espace membre. Toute la bibliothèque est accessible à tout
  * concurrent connecté : ce sont des ressources partagées par
  * l'organisateur, pas des données personnelles.
  */

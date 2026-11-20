@@ -19,6 +19,14 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
   }
 
+  await prisma.member.update({
+    where: { phoneNormalized: session.phoneNormalized },
+    data: {
+      firstName: parsed.data.firstName ?? "",
+      lastName: parsed.data.lastName ?? "",
+    },
+  });
+
   await createAthleteSession({
     phoneNormalized: session.phoneNormalized,
     firstName: parsed.data.firstName,

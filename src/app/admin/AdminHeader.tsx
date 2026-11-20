@@ -121,7 +121,7 @@ export function AdminHeader({ email }: { email: string }) {
             className="mt-4 flex items-center gap-3 rounded-xl border border-dashed border-muted px-4 py-3 text-base font-medium text-ink hover:border-accent"
           >
             <span className="text-xl">🔁</span>
-            Passer à l&rsquo;espace concurrent
+            Passer à l&rsquo;espace membre
           </Link>
           <div className="mt-4 flex items-center justify-between border-t border-border pt-4 text-sm text-muted">
             <span className="truncate">{email}</span>

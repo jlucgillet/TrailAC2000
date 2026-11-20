@@ -218,3 +218,14 @@ model TrackFollow {
   @@index([createdAt])
   @@map("track_follows")
 }
+
+model Member {
+  id              String   @id @default(uuid())
+  phoneNormalized String   @unique
+  firstName       String   @default("")
+  lastName        String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+
+  @@map("members")
+}

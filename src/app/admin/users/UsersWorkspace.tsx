@@ -2,17 +2,19 @@
 
 import { useState } from "react";
 import { AdminsTab } from "./AdminsTab";
+import { MembersTab } from "./MembersTab";
 import { GlobalParticipantsTab } from "./GlobalParticipantsTab";
 
 const TABS = [
+  { id: "members", label: "Membres" },
   { id: "admins", label: "Administrateurs" },
-  { id: "participants", label: "Concurrents" },
+  { id: "participants", label: "Participants" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
 
 export function UsersWorkspace() {
-  const [tab, setTab] = useState<TabId>("admins");
+  const [tab, setTab] = useState<TabId>("members");
 
   return (
     <div>
@@ -33,6 +35,7 @@ export function UsersWorkspace() {
       </nav>
 
       {tab === "admins" && <AdminsTab />}
+      {tab === "members" && <MembersTab />}
       {tab === "participants" && <GlobalParticipantsTab />}
     </div>
   );

@@ -8,6 +8,7 @@ import { AthleteLogoutButton } from "./AthleteLogoutButton";
 const NAV_LINKS = [
   { href: "/mon-espace", label: "Courses", icon: "🏁" },
   { href: "/mon-espace/parcours", label: "Parcours", icon: "🗺️" },
+  { href: "/mon-espace/trombinoscope", label: "Trombinoscope", icon: "🧑‍🤝‍🧑" },
   { href: "/mon-espace/profil", label: "Profil", icon: "👤" },
   { href: "/guide?espace=concurrent", label: "Guide", icon: "📖" },
 ];
@@ -24,7 +25,7 @@ export function MonEspaceHeader() {
           onClick={() => setOpen(false)}
           className="truncate font-display text-xl font-semibold"
         >
-          Mon espace concurrent
+          Mon espace membre
         </Link>
 
         {/* Navigation complète, écrans larges */}

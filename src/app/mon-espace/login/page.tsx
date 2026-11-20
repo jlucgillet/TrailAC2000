@@ -4,8 +4,6 @@ import { useState } from "react";
 
 export default function AthleteLoginPage() {
   const [phone, setPhone] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,8 +24,6 @@ export default function AthleteLoginPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           phone,
-          firstName: firstName || undefined,
-          lastName: lastName || undefined,
         }),
         signal: controller.signal,
       });
@@ -58,7 +54,7 @@ export default function AthleteLoginPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-6 py-10">
       <div className="w-full max-w-sm">
-        <p className="mb-1 text-sm text-muted">Espace concurrent</p>
+        <p className="mb-1 text-sm text-muted">Espace membre</p>
         <h1 className="mb-8 font-display text-3xl font-semibold leading-tight">
           Mes courses
         </h1>
@@ -77,31 +73,6 @@ export default function AthleteLoginPage() {
               className="rounded-xl border border-border bg-surface px-4 py-4 text-lg text-ink placeholder:text-muted focus:border-accent"
             />
           </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-muted">Prénom</span>
-              <input
-                type="text"
-                autoComplete="given-name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Facultatif"
-                className="rounded-xl border border-border bg-surface px-3 py-3 text-ink placeholder:text-muted focus:border-accent"
-              />
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-sm text-muted">Nom</span>
-              <input
-                type="text"
-                autoComplete="family-name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Facultatif"
-                className="rounded-xl border border-border bg-surface px-3 py-3 text-ink placeholder:text-muted focus:border-accent"
-              />
-            </label>
-          </div>
 
           {error && (
             <p role="alert" className="rounded-lg bg-danger/10 px-4 py-3 text-sm text-danger">

@@ -265,7 +265,7 @@ function AthleteVisibilitySection({
 
   return (
     <div className="rounded-xl border border-border bg-surface p-5">
-      <h3 className="mb-3 font-display text-lg font-semibold">Espace concurrent</h3>
+      <h3 className="mb-3 font-display text-lg font-semibold">Espace membre</h3>
       <label className="flex items-start gap-3">
         <input
           type="checkbox"
@@ -275,7 +275,7 @@ function AthleteVisibilitySection({
           className="mt-1"
         />
         <span>
-          <span className="block">Afficher ce parcours dans l&rsquo;espace concurrent</span>
+          <span className="block">Afficher ce parcours dans l&rsquo;espace membre</span>
           <span className="block text-sm text-muted">
             Visible dans la section Parcours de Mon Espace pour tout concurrent connecté. Désactive-le
             pour un parcours de test ou pas encore prêt à être partagé.

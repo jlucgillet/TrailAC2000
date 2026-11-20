@@ -172,7 +172,7 @@ export function SettingsTab({
       </section>
 
       <section>
-        <h3 className="mb-3 font-display text-xl font-semibold">Espace concurrent</h3>
+        <h3 className="mb-3 font-display text-xl font-semibold">Espace membre</h3>
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
@@ -181,7 +181,7 @@ export function SettingsTab({
             className="mt-1"
           />
           <span>
-            <span className="block">Afficher cette course dans l&rsquo;espace concurrent</span>
+            <span className="block">Afficher cette course dans l&rsquo;espace membre</span>
             <span className="block text-sm text-muted">
               Désactive-le pour une course de test ou en préparation : elle n&rsquo;apparaîtra pas
               dans la section Parcours de Mon Espace, même si un GPX est déjà importé. Ça ne

@@ -90,7 +90,7 @@ export function AdminMenu() {
         href="/mon-espace"
         className="rounded-lg border border-dashed border-muted px-3 py-1.5 text-sm text-muted hover:border-accent hover:text-ink"
       >
-        Espace concurrent
+        Espace membre
       </Link>
     </div>
   );

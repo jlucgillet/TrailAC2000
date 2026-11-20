@@ -175,7 +175,7 @@ export function TracksList() {
                   {t.distanceKm?.toFixed(1)} km · {Math.round(t.elevationGainM ?? 0)} m D+
                 </p>
                 {!t.visibleInAthleteSpace && (
-                  <p className="mt-1 text-xs text-muted">🔒 Masqué de l&rsquo;espace concurrent</p>
+                  <p className="mt-1 text-xs text-muted">🔒 Masqué de l&rsquo;espace membre</p>
                 )}
               </div>
             </Link>
