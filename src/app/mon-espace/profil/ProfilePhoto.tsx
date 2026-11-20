@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { PhotoCapture } from "./PhotoCapture";
 import { confirmDialog } from "@/components/ConfirmDialog";
 
 type Photo = { id: string; shared: boolean } | null;
@@ -50,11 +51,16 @@ export function ProfilePhoto({ name, initialPhoto }: { name: string; initialPhot
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [camera, setCamera] = useState(false);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
+    await uploadFile(file);
+  }
+
+  async function uploadFile(file: File) {
     setBusy(true);
     setError(null);
     try {
@@ -120,6 +126,14 @@ export function ProfilePhoto({ name, initialPhoto }: { name: string; initialPhot
             >
               {busy ? "Envoi…" : photo ? "Changer la photo" : "Ajouter une photo"}
             </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setCamera(true)}
+              className="rounded-lg border border-border px-3 py-1.5 text-sm disabled:opacity-50"
+            >
+              📷 Prendre une photo
+            </button>
             {photo && (
               <button
                 type="button"
@@ -150,6 +164,16 @@ export function ProfilePhoto({ name, initialPhoto }: { name: string; initialPhot
             </span>
           </span>
         </label>
+      )}
+
+      {camera && (
+        <PhotoCapture
+          onClose={() => setCamera(false)}
+          onCapture={(file) => {
+            setCamera(false);
+            void uploadFile(file);
+          }}
+        />
       )}
 
       {error && <p className="text-sm text-danger">{error}</p>}
